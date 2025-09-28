@@ -14,6 +14,7 @@
 #include "ConcreteAggregate.h"
 #include "SendMessageCommand.h"
 #include "SaveMessageCommand.h"
+#include "Logger.h"  // Added Logger support
 
 void printSeparator(const std::string& title) {
     std::cout << "\n" << std::string(50, '=') << std::endl;
@@ -394,22 +395,124 @@ void testIterator() {
     delete emptyRoom;
 }
 
+// ================== LOGGER LEVELS TEST ==================
+void testLoggerLevels() {
+    printSeparator("LOGGER LEVELS TEST");
+    std::cout << "This test shows the difference between logging levels:" << std::endl;
+    std::cout << "- NONE: Silent mode" << std::endl;
+    std::cout << "- USER_ONLY: Natural chat experience" << std::endl;
+    std::cout << "- BASIC: System notifications" << std::endl;
+    std::cout << "- DEBUG: Full development details" << std::endl;
+    
+    ChatRoom* testRoom = new CtrlCat();
+    User* alice = new FreeUser("Alice");
+    User* bob = new PremiumUser("Bob");
+    AdminUser* charlie = new AdminUser("Charlie");
+    
+    std::cout << "\n--- Setting up users (BASIC level to see system info) ---" << std::endl;
+    Logger::setLevel(BASIC);
+    testRoom->registerUser(alice);
+    testRoom->registerUser(bob);
+    testRoom->registerUser(charlie);
+    
+    std::cout << "\n=== Test 1: NONE Level ===\n[Should see only this text, then silence]\n" << std::endl;
+    Logger::setLevel(NONE);
+    alice->send("This message should be completely silent", testRoom);
+    bob->send("No output should appear for this", testRoom);
+    
+    std::cout << "\n=== Test 2: USER_ONLY Level ===\n[Natural chat experience]\n" << std::endl;
+    Logger::setLevel(USER_ONLY);
+    alice->send("Hey everyone! How's the chat going?", testRoom);
+    bob->send("Great to see you Alice!", testRoom);
+    charlie->send("Admin here - welcome to PetSpace!", testRoom);
+    bob->send("Thanks for keeping things running smoothly!", testRoom);
+    
+    std::cout << "\n--- Testing Free User Limit (USER_ONLY) ---" << std::endl;
+    for (int i = 0; i < 3; i++) {
+        alice->send("Testing my daily limit " + std::to_string(i+1), testRoom);
+    }
+    
+    std::cout << "\n--- Admin viewing chat history (USER_ONLY) ---" << std::endl;
+    charlie->iterateChatHistory(testRoom);
+    
+    std::cout << "\n=== Test 3: BASIC Level ===\n[Adds system operations]\n" << std::endl;
+    Logger::setLevel(BASIC);
+    
+    // Create fresh users to show join messages
+    User* diana = new FreeUser("Diana");
+    testRoom->registerUser(diana);
+    
+    diana->send("I just joined! This is exciting!", testRoom);
+    alice->send("Welcome Diana!", testRoom);
+    
+    
+    // Show user leaving
+    testRoom->removeUser(diana);
+    
+    std::cout << "\n=== Test 4: DEBUG Level ===\n[Full development details]\n" << std::endl;
+    Logger::setLevel(DEBUG);
+    
+    alice->send("Now you can see everything happening internally!", testRoom);
+    
+    // Show manual command creation in debug
+    std::cout << "\n--- Manual Command Creation (DEBUG level) ---" << std::endl;
+    Command* cmd1 = new SendMessageCommand(testRoom, bob, "Manual debug command");
+    Command* cmd2 = new SaveMessageCommand(testRoom, bob, "Manual debug command");
+    bob->addCommand(cmd1);
+    bob->addCommand(cmd2);
+    bob->executeAll();
+    
+    std::cout << "\n=== Summary ===\n" << std::endl;
+    Logger::setLevel(USER_ONLY);  // Reset to clean
+    std::cout << "✓ NONE: Complete silence for production" << std::endl;
+    std::cout << "✓ USER_ONLY: Natural chat experience for demos" << std::endl;
+    std::cout << "✓ BASIC: System operations for monitoring" << std::endl;
+    std::cout << "✓ DEBUG: Full pattern details for development" << std::endl;
+    
+    // Cleanup
+    delete alice;
+    delete bob;
+    delete charlie;
+    delete diana;
+    delete testRoom;
+}
 
 void KyleTest(){
     //just need to test random things
+
+    ChatRoom* ctrlCat = new CtrlCat();
+    ChatRoom* dogorithm = new Dogorithm();
+    
+    User* alice = new FreeUser("Alice");
+    User* bob = new PremiumUser("Bob");
+    User* charlie = new AdminUser("Charlie");
+    
+    // alice->send("hello cats",ctrlCat);
+    //ctrlCat->registerUser(alice);
+    alice->send("hello cats",ctrlCat);
+    // alice->removeChatRoom(ctrlCat);
+    // alice->send("hello cats",ctrlCat);
+
+    delete alice;
+    delete bob;
+    delete charlie;
+    delete ctrlCat;
+    delete dogorithm;
 }
 
 // ================== MAIN FUNCTION ==================
 int main() {
-    std::cout << "=== PetSpace Chat System Test Suite ===" << std::endl;
-    std::cout << "Testing Mediator and Command Patterns with User Hierarchy\n" << std::endl;
+    // Set default logging level
+    Logger::setLevel(DEBUG);  // Clean experience by default
 
-    //testMediatorPattern();
+    // testMediatorPattern();
     // testCommandPattern();
-     //testUserHierarchy();
+    //  testUserHierarchy();
     // testPolymorphism();
     // testIntegration();
-    //testIterator();
+    // testIterator();
+    //testLoggerLevels();  // New function to test all logger levels
+    KyleTest();
     
     std::cout << "\n=== All Tests Complete ===" << std::endl;
     return 0;

@@ -1,6 +1,6 @@
 /**
  * @file ChatRoom.cpp
- * @brief Implementation of ChatRoom class with Iterator pattern support
+ * @brief Implementation of ChatRoom class with fixed message display
  * @author Megan Azmanov & Kyle McCalgan
  * @date 2025-09-28
  */
@@ -9,44 +9,70 @@
 #include "Users.h"
 #include "ConcreteAggregate.h"
 #include "ConcreteIterator.h"
+#include "Logger.h"
 
 #include <iostream>
 #include <algorithm>
 #include <vector>
 
 void ChatRoom::sendMessage(std::string message, User* fromUser) {
-    // Send message to all users
+    // Validate that the fromUser is actually in this room
+    bool userFound = false;
+    for (std::vector<User*>::iterator it = users.begin(); it != users.end(); ++it) {
+        if (*it == fromUser) {
+            userFound = true;
+            break;
+        }
+    }
+    
+    if (!userFound) {
+        Logger::debug("[ChatRoom] ERROR: User " + fromUser->getName() + " is not registered in this room!");
+        return;
+    }
 
-    //can take this out later just for testing 
-    std::cout << "\n[ChatRoom] Broadcasting message from " << fromUser->getName() << std::endl;
+    // FIXED: Display message cleanly once, then handle internal distribution
+    Logger::user(fromUser->getName() + ": " + message);
+    Logger::debug("[ChatRoom] Broadcasting message from " + fromUser->getName());
 
-     for (std::vector<User*>::iterator it = users.begin(); it != users.end(); ++it) {
-
+    // Send to all users except sender - but don't duplicate the message display
+    for (std::vector<User*>::iterator it = users.begin(); it != users.end(); ++it) {
         if (*it != fromUser) {
             (*it)->receive(message, fromUser, this);
         }
-     }
+    }
 }
 
 void ChatRoom::saveMessage(std::string message, User* fromUser) {
+    // Validate that the fromUser is actually in this room
+    bool userFound = false;
+    for (std::vector<User*>::iterator it = users.begin(); it != users.end(); ++it) {
+        if (*it == fromUser) {
+            userFound = true;
+            break;
+        }
+    }
+    
+    if (!userFound) {
+        Logger::debug("[ChatRoom] ERROR: Cannot save message - User " + fromUser->getName() + " is not registered in this room!");
+        return;
+    }
+
     // Format: "UserName: message"
     std::string formattedMessage = fromUser->getName() + ": " + message;
     chatHistory.push_back(formattedMessage);
 
-     std::cout << "[ChatRoom] Message saved to history: " << formattedMessage << std::endl;
+    Logger::debug("[ChatRoom] Message saved to history: " + formattedMessage);
 }
 
 const std::vector<std::string>* ChatRoom::getChatHistory(User* requestingUser) const {
     // Check if requesting user is admin
     if (requestingUser && requestingUser->getUserType() == UserType::ADMIN) {
-        std::cout << "[ChatRoom] Admin " << requestingUser->getName() 
-                  << " granted access to chat history (" << chatHistory.size() << " messages)" << std::endl;
+        Logger::debug("[ChatRoom] Admin " + requestingUser->getName() + " granted access to chat history (" + std::to_string(chatHistory.size()) + " messages)");
         return &chatHistory;
     } else {
-        std::cout << "[ChatRoom] Access denied - only admins can access chat history" << std::endl;
+        Logger::info("Access denied - only admins can access chat history");
         if (requestingUser) {
-            std::cout << "[ChatRoom] User " << requestingUser->getName() 
-                      << " (" << requestingUser->getUserTypeString() << ") lacks admin privileges" << std::endl;
+            Logger::debug("[ChatRoom] User " + requestingUser->getName() + " (" + requestingUser->getUserTypeString() + ") lacks admin privileges");
         }
         return nullptr;
     }
@@ -55,20 +81,31 @@ const std::vector<std::string>* ChatRoom::getChatHistory(User* requestingUser) c
 Iterator* ChatRoom::createIterator(User* requestingUser) {
     // Check if requesting user is admin
     if (requestingUser && requestingUser->getUserType() == UserType::ADMIN) {
-        std::cout << "[ChatRoom] Creating iterator for admin " << requestingUser->getName() << std::endl;
+        Logger::debug("[ChatRoom] Creating iterator for admin " + requestingUser->getName());
         return new ConcreteIterator(&chatHistory);
     } else {
-        std::cout << "[ChatRoom] Iterator access denied - only admins can iterate chat history" << std::endl;
+        Logger::info("Iterator access denied - only admins can iterate chat history");
         if (requestingUser) {
-            std::cout << "[ChatRoom] User " << requestingUser->getName() 
-                      << " (" << requestingUser->getUserTypeString() << ") lacks admin privileges" << std::endl;
+            Logger::debug("[ChatRoom] User " + requestingUser->getName() + " (" + requestingUser->getUserTypeString() + ") lacks admin privileges");
         }
         return nullptr;
     }
 }
 
 Iterator* ChatRoom::createIterator() {
-    // Base implementation for Aggregate interface
-    std::cout << "[ChatRoom] Creating unrestricted iterator (base Aggregate method)" << std::endl;
+    Logger::debug("[ChatRoom] WARNING: Creating unrestricted iterator (base Aggregate method)");
     return new ConcreteIterator(&chatHistory);
+}
+
+void ChatRoom::removeUser(User* user) {
+    for (std::vector<User*>::iterator it = users.begin(); it != users.end(); it++) {
+        if (*it == user) {
+            users.erase(it);
+            user->removeChatRoom(this);
+            Logger::info(user->getName() + " left the room");
+            return;
+        }
+    }
+    
+    Logger::debug("[ChatRoom] User " + user->getName() + " was not in this room");
 }

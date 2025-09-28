@@ -42,6 +42,10 @@ run: $(TEST_TARGET)
 run-demo: $(DEMO_TARGET)
 	./$(DEMO_TARGET)
 
+# Run valgrind on test target
+val: $(TEST_TARGET)
+	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes ./$(TEST_TARGET)
+
 # Build both executables
 both: $(TEST_TARGET) $(DEMO_TARGET)
 
@@ -73,4 +77,4 @@ debug:
 	@echo $(DEMO_OBJECTS)
 
 # Add all targets to .PHONY
-.PHONY: all run run-demo both clean coverage docs clean-docs debug
+.PHONY: all run run-demo val both clean coverage docs clean-docs debug

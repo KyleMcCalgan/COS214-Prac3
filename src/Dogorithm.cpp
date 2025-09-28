@@ -1,23 +1,23 @@
 /**
  * @file Dogorithm.cpp
- * @brief Implementation of Dogorithm concrete mediator
+ * @brief Implementation of Dogorithm concrete mediator with Logger
  * @author Megan Azmanov & Kyle McCalgan
  * @date 2025-09-19
  */
 
 #include "Dogorithm.h"
 #include "Users.h"
+#include "Logger.h"
 #include <algorithm>
 #include <iostream>
 #include <vector>
 
 void Dogorithm::registerUser(User* user) {
-   
     std::vector<User*>::iterator it;
     for (it = users.begin(); it != users.end(); it++) {
         if (*it == user) {
-            std::cout << "[Dogorithm] User " << user->getName() << " already registered" << std::endl;
-            return; // User already exists, don't add again
+            Logger::info(user->getName() + " already in Dogorithm room");
+            return;
         }
     }
     
@@ -25,22 +25,25 @@ void Dogorithm::registerUser(User* user) {
     users.push_back(user);
     
     // bidirectional relationship
-    //Tell user they're in this room  
     user->addChatRoom(this);
     
-    std::cout << "[Dogorithm] User " << user->getName() << " joined the dog room" << std::endl;
+    // Clean user experience
+    Logger::info(user->getName() + " joined Dogorithm");
+    
+    // Debug info
+    Logger::debug("[Dogorithm] User " + user->getName() + " registered with mediator");
 }
 
 void Dogorithm::removeUser(User* user) {
-   
     std::vector<User*>::iterator it;
     for (it = users.begin(); it != users.end(); it++) {
         if (*it == user) {
             users.erase(it);
-            std::cout << "[Dogorithm] User " << user->getName() << " left the dog room." << std::endl;
+            Logger::info(user->getName() + " left Dogorithm");
+            Logger::debug("[Dogorithm] User removed from mediator");
             return;
         }
     }
     
-    std::cout << "[Dogorithm] User " << user->getName() << " was not in this room." << std::endl;
+    Logger::debug("[Dogorithm] User " + user->getName() + " was not in this room");
 }

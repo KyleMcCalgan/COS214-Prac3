@@ -1,6 +1,6 @@
 /**
  * @file SaveMessageCommand.cpp
- * @brief Implementation of SaveMessageCommand class
+ * @brief Implementation of SaveMessageCommand class with Logger
  * @author Megan Azmanov & Kyle McCalgan
  * @date 2025-09-19
  */
@@ -8,19 +8,19 @@
 #include "SaveMessageCommand.h"
 #include "ChatRoom.h"
 #include "Users.h"
+#include "Logger.h"
 #include <iostream>
 
 SaveMessageCommand::SaveMessageCommand(ChatRoom* room, User* user, std::string msg)
     : Command(room, user, msg) {
     
-    std::cout << "[SaveMessageCommand] Created for message: \"" << msg << "\"" << std::endl;
+    Logger::debug("[SaveMessageCommand] Created for message: \"" + msg + "\"");
 }
 
 void SaveMessageCommand::execute() {
-
-    std::cout << "[SaveMessageCommand] Executing - saving message to history" << std::endl;
+    Logger::debug("[SaveMessageCommand] Executing - saving message to history");
     
     chatRoom->saveMessage(message, fromUser);
     
-    std::cout << "[SaveMessageCommand] Message saved to history" << std::endl;
+    Logger::debug("[SaveMessageCommand] Message saved to history");
 }
