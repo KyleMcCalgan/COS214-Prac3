@@ -86,6 +86,17 @@ void User::performSend(std::string message, ChatRoom* room) {
     executeAll();
 }
 
+Iterator* User::requestChatHistoryIterator(ChatRoom* room) {
+    std::cout << "[" << name << "] Requesting chat history iterator..." << std::endl;
+    
+    if (userType == UserType::ADMIN) {
+        return room->createIterator(this);
+    } else {
+        std::cout << "[" << name << "] Access denied - only admins can access chat history" << std::endl;
+        return nullptr;
+    }
+}
+
 // ================== FreeUser Class ==================
 
 FreeUser::FreeUser(std::string userName) : User(userName, UserType::FREE), dailyMessageCount(0) {
@@ -154,4 +165,24 @@ void AdminUser::receive(std::string message, User* fromUser, ChatRoom* room) {
     User::receive(message, fromUser, room);
     
     std::cout << "[ADMIN LOG] Message logged for moderation review" << std::endl;
+}
+
+void AdminUser::iterateChatHistory(ChatRoom* room) {
+    std::cout << "\n[Admin " << name << "] Accessing chat history..." << std::endl;
+    
+    Iterator* iterator = requestChatHistoryIterator(room);
+    
+    if (iterator) {
+        std::cout << "[Admin " << name << "] Starting iteration through chat history:" << std::endl;
+        
+        for (iterator->first(); !iterator->isDone(); iterator->next()) {
+            std::string message = iterator->currentItem();
+            std::cout << "[Admin Review] " << message << std::endl;
+        }
+        
+        std::cout << "[Admin " << name << "] Chat history iteration complete" << std::endl;
+        delete iterator;
+    } else {
+        std::cout << "[Admin " << name << "] Failed to obtain iterator" << std::endl;
+    }
 }

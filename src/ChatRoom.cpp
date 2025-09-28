@@ -1,12 +1,14 @@
 /**
  * @file ChatRoom.cpp
- * @brief Implementation of ChatRoom class
+ * @brief Implementation of ChatRoom class with Iterator pattern support
  * @author Megan Azmanov & Kyle McCalgan
- * @date 2025-09-19
+ * @date 2025-09-28
  */
 
 #include "ChatRoom.h"
 #include "Users.h"
+#include "ConcreteAggregate.h"
+#include "ConcreteIterator.h"
 
 #include <iostream>
 #include <algorithm>
@@ -34,3 +36,39 @@ void ChatRoom::saveMessage(std::string message, User* fromUser) {
      std::cout << "[ChatRoom] Message saved to history: " << formattedMessage << std::endl;
 }
 
+const std::vector<std::string>* ChatRoom::getChatHistory(User* requestingUser) const {
+    // Check if requesting user is admin
+    if (requestingUser && requestingUser->getUserType() == UserType::ADMIN) {
+        std::cout << "[ChatRoom] Admin " << requestingUser->getName() 
+                  << " granted access to chat history (" << chatHistory.size() << " messages)" << std::endl;
+        return &chatHistory;
+    } else {
+        std::cout << "[ChatRoom] Access denied - only admins can access chat history" << std::endl;
+        if (requestingUser) {
+            std::cout << "[ChatRoom] User " << requestingUser->getName() 
+                      << " (" << requestingUser->getUserTypeString() << ") lacks admin privileges" << std::endl;
+        }
+        return nullptr;
+    }
+}
+
+Iterator* ChatRoom::createIterator(User* requestingUser) {
+    // Check if requesting user is admin
+    if (requestingUser && requestingUser->getUserType() == UserType::ADMIN) {
+        std::cout << "[ChatRoom] Creating iterator for admin " << requestingUser->getName() << std::endl;
+        return new ConcreteIterator(&chatHistory);
+    } else {
+        std::cout << "[ChatRoom] Iterator access denied - only admins can iterate chat history" << std::endl;
+        if (requestingUser) {
+            std::cout << "[ChatRoom] User " << requestingUser->getName() 
+                      << " (" << requestingUser->getUserTypeString() << ") lacks admin privileges" << std::endl;
+        }
+        return nullptr;
+    }
+}
+
+Iterator* ChatRoom::createIterator() {
+    // Base implementation for Aggregate interface
+    std::cout << "[ChatRoom] Creating unrestricted iterator (base Aggregate method)" << std::endl;
+    return new ConcreteIterator(&chatHistory);
+}

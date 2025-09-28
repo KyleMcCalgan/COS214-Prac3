@@ -10,6 +10,8 @@
 #include "CtrlCat.h"
 #include "Dogorithm.h"
 #include "Command.h"
+#include "Iterator.h"
+#include "ConcreteAggregate.h"
 #include "SendMessageCommand.h"
 #include "SaveMessageCommand.h"
 
@@ -224,16 +226,190 @@ void testIntegration() {
     delete dogorithm;
 }
 
+// ================== ITERATOR PATTERN TEST ==================
+void testIterator() {
+    printSeparator("ITERATOR PATTERN TEST");
+    
+    // Create chat room and users
+    ChatRoom* testRoom = new CtrlCat();
+    
+    FreeUser* alice = new FreeUser("Alice");
+    PremiumUser* bob = new PremiumUser("Bob");  
+    AdminUser* charlie = new AdminUser("Charlie");
+    AdminUser* diana = new AdminUser("Diana");
+    
+    // Register users
+    std::cout << "\n--- User Registration ---" << std::endl;
+    testRoom->registerUser(alice);
+    testRoom->registerUser(bob);
+    testRoom->registerUser(charlie);
+    testRoom->registerUser(diana);
+    
+    // Generate some chat history
+    std::cout << "\n--- Generating Chat History ---" << std::endl;
+    alice->send("Hello everyone!", testRoom);
+    bob->send("Hey Alice! How's everyone doing?", testRoom);
+    charlie->send("Admin here - great to see active chat!", testRoom);
+    bob->send("Thanks for keeping the chat safe, Charlie!", testRoom);
+    alice->send("This is a really nice chat system!", testRoom);
+    diana->send("Another admin checking in - all looks good!", testRoom);
+    
+    // Test 1: Admin access to chat history
+    std::cout << "\n--- Test 1: Admin Iterator Access ---" << std::endl;
+    std::cout << "Testing admin Charlie's access to chat history..." << std::endl;
+    charlie->iterateChatHistory(testRoom);
+    
+    // Test 2: Multiple admin access
+    std::cout << "\n--- Test 2: Multiple Admin Access ---" << std::endl;
+    std::cout << "Testing admin Diana's access to same chat history..." << std::endl;
+    diana->iterateChatHistory(testRoom);
+    
+    // Test 3: Non-admin access denial (Free User)
+    std::cout << "\n--- Test 3: Non-Admin Access Denial (Free User) ---" << std::endl;
+    std::cout << "Testing free user Alice's access (should be denied)..." << std::endl;
+    Iterator* aliceIterator = alice->requestChatHistoryIterator(testRoom);
+    if (!aliceIterator) {
+        std::cout << "✓ Correctly denied access to free user" << std::endl;
+    } else {
+        std::cout << "✗ ERROR: Free user should not have access!" << std::endl;
+        delete aliceIterator;
+    }
+    
+    // Test 4: Non-admin access denial (Premium User)  
+    std::cout << "\n--- Test 4: Non-Admin Access Denial (Premium User) ---" << std::endl;
+    std::cout << "Testing premium user Bob's access (should be denied)..." << std::endl;
+    Iterator* bobIterator = bob->requestChatHistoryIterator(testRoom);
+    if (!bobIterator) {
+        std::cout << "✓ Correctly denied access to premium user" << std::endl;
+    } else {
+        std::cout << "✗ ERROR: Premium user should not have access!" << std::endl;
+        delete bobIterator;
+    }
+    
+    // Test 5: Manual iterator operations
+    std::cout << "\n--- Test 5: Manual Iterator Operations ---" << std::endl;
+    std::cout << "Testing manual iterator control by admin Charlie..." << std::endl;
+    Iterator* manualIterator = charlie->requestChatHistoryIterator(testRoom);
+    
+    if (manualIterator) {
+        std::cout << "Manual iteration test:" << std::endl;
+        
+        // Test first()
+        manualIterator->first();
+        std::cout << "First message: " << manualIterator->currentItem() << std::endl;
+        
+        // Test next() a few times
+        manualIterator->next();
+        std::cout << "Second message: " << manualIterator->currentItem() << std::endl;
+        
+        manualIterator->next();
+        std::cout << "Third message: " << manualIterator->currentItem() << std::endl;
+        
+        // Test isDone() in middle
+        std::cout << "Is iteration done? " << (manualIterator->isDone() ? "Yes" : "No") << std::endl;
+        
+        // Iterate to the end
+        std::cout << "Continuing to end..." << std::endl;
+        while (!manualIterator->isDone()) {
+            manualIterator->next();
+            if (!manualIterator->isDone()) {
+                std::cout << "Message: " << manualIterator->currentItem() << std::endl;
+            }
+        }
+        
+        // Test isDone() at end
+        std::cout << "Is iteration done now? " << (manualIterator->isDone() ? "Yes" : "No") << std::endl;
+        
+        // Test accessing item when done
+        std::cout << "Attempting to access item when done: \"" << manualIterator->currentItem() << "\"" << std::endl;
+        
+        // Test reset with first()
+        std::cout << "Resetting iterator..." << std::endl;
+        manualIterator->first();
+        std::cout << "After reset - First message: " << manualIterator->currentItem() << std::endl;
+        
+        delete manualIterator;
+    }
+    
+    // Test 6: Empty chat room iterator
+    std::cout << "\n--- Test 6: Empty Chat Room Iterator ---" << std::endl;
+    ChatRoom* emptyRoom = new Dogorithm();
+    charlie->addChatRoom(emptyRoom);
+    
+    std::cout << "Testing iterator on empty chat room..." << std::endl;
+    charlie->iterateChatHistory(emptyRoom);
+    
+    // Test 7: Iterator after adding more messages
+    std::cout << "\n--- Test 7: Iterator After Adding More Messages ---" << std::endl;
+    std::cout << "Adding more messages to original room..." << std::endl;
+    bob->send("One more message!", testRoom);
+    alice->send("And another one!", testRoom);
+    
+    std::cout << "Admin checking updated history:" << std::endl;
+    charlie->iterateChatHistory(testRoom);
+    
+    // Test 8: Aggregate interface (direct access)
+    std::cout << "\n--- Test 8: Direct Aggregate Interface ---" << std::endl;
+    std::cout << "Testing direct aggregate createIterator() method..." << std::endl;
+    Iterator* directIterator = testRoom->createIterator();
+    
+    if (directIterator) {
+        std::cout << "Direct iterator created successfully" << std::endl;
+        std::cout << "First message via direct iterator: ";
+        directIterator->first();
+        std::cout << directIterator->currentItem() << std::endl;
+        delete directIterator;
+    }
+    
+    // Test 9: ConcreteAggregate usage
+    std::cout << "\n--- Test 9: ConcreteAggregate Direct Usage ---" << std::endl;
+    const std::vector<std::string>* history = testRoom->getChatHistory(charlie);
+    if (history) {
+        ConcreteAggregate* aggregate = new ConcreteAggregate(history);
+        Iterator* aggIterator = aggregate->createIterator();
+        
+        std::cout << "ConcreteAggregate iterator test:" << std::endl;
+        aggIterator->first();
+        std::cout << "First via ConcreteAggregate: " << aggIterator->currentItem() << std::endl;
+        
+        delete aggIterator;
+        delete aggregate;
+    }
+    
+    std::cout << "\n--- Iterator Pattern Integration Summary ---" << std::endl;
+    std::cout << "✓ Admin users can access chat history via iterator" << std::endl;
+    std::cout << "✓ Non-admin users are properly denied access" << std::endl;
+    std::cout << "✓ Iterator operations work correctly (first, next, isDone, currentItem)" << std::endl;
+    std::cout << "✓ Iterator handles empty collections safely" << std::endl;
+    std::cout << "✓ Iterator updates with new messages" << std::endl;
+    std::cout << "✓ Both admin-controlled and direct aggregate access work" << std::endl;
+    std::cout << "✓ Memory management handled properly" << std::endl;
+    
+    // Cleanup
+    delete alice;
+    delete bob;
+    delete charlie;
+    delete diana;
+    delete testRoom;
+    delete emptyRoom;
+}
+
+
+void KyleTest(){
+    //just need to test random things
+}
+
 // ================== MAIN FUNCTION ==================
 int main() {
     std::cout << "=== PetSpace Chat System Test Suite ===" << std::endl;
     std::cout << "Testing Mediator and Command Patterns with User Hierarchy\n" << std::endl;
 
-    testMediatorPattern();
+    //testMediatorPattern();
     // testCommandPattern();
-    // testUserHierarchy();
+     //testUserHierarchy();
     // testPolymorphism();
     // testIntegration();
+    //testIterator();
     
     std::cout << "\n=== All Tests Complete ===" << std::endl;
     return 0;

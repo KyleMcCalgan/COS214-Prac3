@@ -2,48 +2,58 @@
 CXX = g++
 CXXFLAGS = -Wall -Wextra -std=c++11 -g
 TEST_TARGET = test
+DEMO_TARGET = demo
 
-# Source files in src directory
+# Source directory
 SRCDIR = src
-SOURCES = ChatRoom.cpp \
-          Command.cpp \
-          CtrlCat.cpp \
-          Dogorithm.cpp \
-          SaveMessageCommand.cpp \
-          SendMessageCommand.cpp \
-          Users.cpp \
-          TestingMain.cpp
 
-# Add src/ prefix to sources
-SRC_FILES = $(addprefix $(SRCDIR)/, $(SOURCES))
+# Automatically find all .cpp files in src directory
+SOURCES = $(wildcard $(SRCDIR)/*.cpp)
 
-# Object files (replace src/ and .cpp with .o)
-OBJECTS = $(SRC_FILES:.cpp=.o)
+# Object files for all sources (replace .cpp with .o)
+ALL_OBJECTS = $(SOURCES:.cpp=.o)
+
+# Test objects (exclude demoMain.o)
+TEST_OBJECTS = $(filter-out $(SRCDIR)/demoMain.o, $(ALL_OBJECTS))
+
+# Demo objects (exclude TestingMain.o)
+DEMO_OBJECTS = $(filter-out $(SRCDIR)/TestingMain.o, $(ALL_OBJECTS))
 
 # Default target
 all: $(TEST_TARGET)
 
-# Build executable
-$(TEST_TARGET): $(OBJECTS)
-	$(CXX) $(CXXFLAGS) -o $(TEST_TARGET) $(OBJECTS)
+# Build test executable
+$(TEST_TARGET): $(TEST_OBJECTS)
+	$(CXX) $(CXXFLAGS) -o $(TEST_TARGET) $(TEST_OBJECTS)
+
+# Build demo executable
+$(DEMO_TARGET): $(DEMO_OBJECTS)
+	$(CXX) $(CXXFLAGS) -o $(DEMO_TARGET) $(DEMO_OBJECTS)
 
 # Pattern rule for object files
 $(SRCDIR)/%.o: $(SRCDIR)/%.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-# Run target
+# Run test target
 run: $(TEST_TARGET)
 	./$(TEST_TARGET)
 
+# Run demo target
+run-demo: $(DEMO_TARGET)
+	./$(DEMO_TARGET)
+
+# Build both executables
+both: $(TEST_TARGET) $(DEMO_TARGET)
+
 # Clean target
 clean:
-	rm -f $(SRCDIR)/*.o $(TEST_TARGET)
+	rm -f $(SRCDIR)/*.o $(TEST_TARGET) $(DEMO_TARGET)
 
 # Coverage target
 coverage: $(TEST_TARGET)
 	./$(TEST_TARGET)
 
-
+# Documentation target
 docs: Doxyfile
 	doxygen Doxyfile
 
@@ -51,6 +61,16 @@ docs: Doxyfile
 clean-docs:
 	rm -rf html/ latex/
 
-# Add docs and clean-docs to .PHONY
-.PHONY: all run clean coverage docs clean-docs
+# Debug target to show what files will be compiled
+debug:
+	@echo "All source files found:"
+	@echo $(SOURCES)
+	@echo ""
+	@echo "Test objects (excludes demoMain.o):"
+	@echo $(TEST_OBJECTS)
+	@echo ""
+	@echo "Demo objects (excludes TestingMain.o):"
+	@echo $(DEMO_OBJECTS)
 
+# Add all targets to .PHONY
+.PHONY: all run run-demo both clean coverage docs clean-docs debug

@@ -10,6 +10,7 @@
 
 #include <string>
 #include <vector>
+#include "Iterator.h" 
 
 class ChatRoom;
 class Command;
@@ -106,6 +107,15 @@ public:
      */
     void addChatRoom(ChatRoom* room);
 
+        /**
+     * @brief Request iterator for chat history (admin only)
+     * @param room The chat room to get history from
+     * @return Iterator pointer if user is admin, nullptr otherwise
+     */
+    Iterator* requestChatHistoryIterator(ChatRoom* room);
+
+    
+
 protected:
     /**
      * @brief Helper method to actually send the message (used by derived classes)
@@ -113,6 +123,8 @@ protected:
      * @param room The chat room to send to
      */
     void performSend(std::string message, ChatRoom* room);
+
+
 };
 
 /**
@@ -205,6 +217,12 @@ public:
      * @param room The chat room it came from
      */
     void receive(std::string message, User* fromUser, ChatRoom* room) override;
+
+    /**
+     * @brief Admin method to iterate through chat history
+     * @param room The chat room to iterate
+     */
+    void iterateChatHistory(ChatRoom* room);
 };
 
 #endif
