@@ -1,6 +1,6 @@
 # Makefile for COS214 Practical 3 - PetSpace Chat System
 CXX = g++
-CXXFLAGS = -Wall -Wextra -std=c++98 -g
+CXXFLAGS = -Wall -Wextra -std=c++11 -g
 TEST_TARGET = test
 
 # Source files in src directory

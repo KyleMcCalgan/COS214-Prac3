@@ -1,6 +1,6 @@
 /**
  * @file User.h
- * @brief Defines the User class, Colleague in Mediator, Invoker in Command
+ * @brief Defines the User base class and derived user types
  * @author Megan Azmanov & Kyle McCalgan
  * @date 2025-09-19
  */
@@ -15,29 +15,41 @@ class ChatRoom;
 class Command;
 
 /**
+ * @enum UserType
+ * @brief Enumeration for different user types
+ */
+enum class UserType {
+    FREE,
+    PREMIUM,
+    ADMIN
+};
+
+/**
  * @class User
- * @brief Represents a user in the chat system
+ * @brief Abstract base class for users in the chat system
  * 
- * User acts as both a Colleague in the Mediator pattern, commuicates through chatroom mediator
- * an Invoker in the Command pattern, creates and executes commands
+ * User acts as both a Colleague in the Mediator pattern, communicates through chatroom mediator
+ * and an Invoker in the Command pattern, creates and executes commands
  */
 class User {
-private:
+protected:
     std::string name;
-    std::vector<ChatRoom*> chatRooms;//all rooms user belongs too
+    std::vector<ChatRoom*> chatRooms;
     std::vector<Command*> commandQueue;
+    UserType userType;
 
 public:
     /**
      * @brief Constructor
      * @param userName The user's name
+     * @param type The type of user
      */
-    User(std::string userName);
+    User(std::string userName, UserType type);
     
     /**
-     * @brief Destructor will clean up command queue
+     * @brief Virtual destructor for proper cleanup
      */
-    ~User();
+    virtual ~User();
     
     /**
      * @brief Get user's name
@@ -45,46 +57,44 @@ public:
      */
     std::string getName() const;
     
+    /**
+     * @brief Get user's type
+     * @return The user's type
+     */
+    UserType getUserType() const;
+    
+    /**
+     * @brief Get user type as string for display
+     * @return String representation of user type
+     */
+    std::string getUserTypeString() const;
 
-    //Mediator pattern functions ----------------------------------
+    // Mediator pattern functions ----------------------------------
 
     /**
-     * @brief Send a message to a chat room
+     * @brief Send a message to a chat room (virtual for different user behavior)
      * @param message The message to send
      * @param room The chat room to send to
-     * 
-     * MEDIATOR PATTERN: User doesn't send to other users directly.
-     * Instead, user communicates through the ChatRoom mediator.
-     * 
-     * COMMAND PATTERN: This method creates SendMessageCommand and 
-     * SaveMessageCommand objects and executes them.
+     * @return true if message was sent successfully, false if blocked by limits
      */
-    void send(std::string message, ChatRoom* room);
+    virtual bool send(std::string message, ChatRoom* room) = 0;
     
-
     /**
      * @brief Receive a message from another user
      * @param message The message content
      * @param fromUser The user who sent it
      * @param room The chat room it came from
-     * 
-     * MEDIATOR PATTERN: Called by ChatRoom when another user sends a message.
-     * User never calls this directly on another user.
      */
-    void receive(std::string message, User* fromUser, ChatRoom* room);
+    virtual void receive(std::string message, User* fromUser, ChatRoom* room);
     
-
-      //command pattern methods---------------------------------
-
-
-      
+    // Command pattern methods ---------------------------------
+    
     /**
      * @brief Add a command to the queue
      * @param command Pointer to command to add
      */
     void addCommand(Command* command);
     
-  
     /**
      * @brief Execute all queued commands
      */
@@ -95,6 +105,106 @@ public:
      * @param room Pointer to chat room
      */
     void addChatRoom(ChatRoom* room);
+
+protected:
+    /**
+     * @brief Helper method to actually send the message (used by derived classes)
+     * @param message The message to send
+     * @param room The chat room to send to
+     */
+    void performSend(std::string message, ChatRoom* room);
+};
+
+/**
+ * @class FreeUser
+ * @brief Free user with daily message limits
+ */
+class FreeUser : public User {
+private:
+    static const int DAILY_MESSAGE_LIMIT = 10;
+    int dailyMessageCount;
+
+public:
+    /**
+     * @brief Constructor for free user
+     * @param userName The user's name
+     */
+    FreeUser(std::string userName);
+    
+    /**
+     * @brief Send message with daily limit check
+     * @param message The message to send
+     * @param room The chat room to send to
+     * @return true if sent, false if daily limit exceeded
+     */
+    bool send(std::string message, ChatRoom* room) override;
+    
+    /**
+     * @brief Reset daily message count (would be called daily in real system)
+     */
+    void resetDailyCount();
+    
+    /**
+     * @brief Get current daily message count
+     * @return Number of messages sent today
+     */
+    int getDailyMessageCount() const;
+    
+    /**
+     * @brief Get daily message limit
+     * @return Daily message limit
+     */
+    int getDailyMessageLimit() const;
+};
+
+/**
+ * @class PremiumUser
+ * @brief Premium user with unlimited messaging
+ */
+class PremiumUser : public User {
+public:
+    /**
+     * @brief Constructor for premium user
+     * @param userName The user's name
+     */
+    PremiumUser(std::string userName);
+    
+    /**
+     * @brief Send message without limits
+     * @param message The message to send
+     * @param room The chat room to send to
+     * @return Always true for premium users
+     */
+    bool send(std::string message, ChatRoom* room) override;
+};
+
+/**
+ * @class AdminUser
+ * @brief Admin user with special privileges
+ */
+class AdminUser : public User {
+public:
+    /**
+     * @brief Constructor for admin user
+     * @param userName The user's name
+     */
+    AdminUser(std::string userName);
+    
+    /**
+     * @brief Send message without limits (admin privilege)
+     * @param message The message to send
+     * @param room The chat room to send to
+     * @return Always true for admin users
+     */
+    bool send(std::string message, ChatRoom* room) override;
+    
+    /**
+     * @brief Admin-specific receive method with additional logging
+     * @param message The message content
+     * @param fromUser The user who sent it
+     * @param room The chat room it came from
+     */
+    void receive(std::string message, User* fromUser, ChatRoom* room) override;
 };
 
 #endif
