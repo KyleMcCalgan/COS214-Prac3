@@ -1,6 +1,6 @@
 /**
  * @file Users.h
- * @brief Declaration of User classes with Mediator Colleague and Command Invoker roles
+ * @brief User class hierarchy with Strategy pattern for validation
  * @author Megan Azmanov & Kyle McCalgan
  * @date 2025-09-28
  */
@@ -10,276 +10,241 @@
 
 #include <string>
 #include <vector>
-#include <iostream>
 
 // Forward declarations
 class ChatRoom;
 class Command;
 class Iterator;
+class ValidationStrategy;
 
-/**
- * @enum UserType
- * @brief Defines the different types of users in the system
- */
 enum class UserType {
-    FREE,    ///< Free user with message limitations
-    PREMIUM, ///< Premium user with unlimited messaging
-    ADMIN    ///< Admin user with administrative privileges
+    FREE,
+    PREMIUM,
+    ADMIN
 };
 
 /**
- * @class User
- * @brief Base class for all users in the chat system
- * 
- * Implements the Colleague role in the Mediator pattern and 
- * the Invoker role in the Command pattern.
+ * @brief Base User class - Abstract base for all user types
+ * Participates in: Mediator (Colleague), Command (Invoker), Strategy (Context)
  */
 class User {
 protected:
-    std::string name;                        ///< User's display name
-    UserType userType;                       ///< Type of user (Free, Premium, Admin)
-    std::vector<ChatRoom*> chatRooms;        ///< Chat rooms the user is registered in
-    std::vector<Command*> commandQueue;      ///< Queue of commands to execute
-
-    /**
-     * @brief Internal method to perform the actual message sending
-     * @param message The message content
-     * @param room The chat room to send the message to
-     */
-    void performSend(std::string message, ChatRoom* room);
+    std::string name;
+    UserType userType;
+    std::vector<ChatRoom*> chatRooms;
+    std::vector<Command*> commandQueue;
+    ValidationStrategy* validationStrategy; ///< Strategy pattern for message validation
 
 public:
     /**
      * @brief Constructor for User
-     * @param userName The user's name
-     * @param type The type of user
+     * @param userName Name of the user
+     * @param type Type of user (FREE, PREMIUM, ADMIN)
      */
     User(std::string userName, UserType type);
-
+    
     /**
      * @brief Virtual destructor
      */
     virtual ~User();
-
-    /**
-     * @brief Get the user's name
-     * @return The user's name
-     */
+    
+    // Getters
     std::string getName() const;
-
-    /**
-     * @brief Get the user's type
-     * @return The user's type
-     */
     UserType getUserType() const;
-
-    /**
-     * @brief Get the user's type as a string
-     * @return String representation of user type
-     */
     std::string getUserTypeString() const;
-
+    std::string toString() const;
+    
+    // Mediator pattern methods (Colleague role)
     /**
-     * @brief Generate debug information about the user
-     * @return String containing all user information for debugging
+     * @brief Receive a message from another user via mediator
+     * @param message The message content
+     * @param fromUser The user who sent the message
+     * @param room The chat room where the message was sent
      */
-    virtual std::string toString() const;
-
+    virtual void receive(std::string message, User* fromUser, ChatRoom* room);
+    
     /**
-     * @brief Send a message to a chat room (pure virtual)
+     * @brief Send a message to a chat room (pure virtual - implemented by subclasses)
      * @param message The message to send
      * @param room The chat room to send to
      * @return true if message was sent successfully, false otherwise
      */
     virtual bool send(std::string message, ChatRoom* room) = 0;
-
+    
+    // Command pattern methods (Invoker role)
     /**
-     * @brief Receive a message from another user
-     * @param message The message content
-     * @param fromUser The user who sent the message
-     * @param room The chat room the message was sent in
-     */
-    virtual void receive(std::string message, User* fromUser, ChatRoom* room);
-
-    /**
-     * @brief Add a command to the command queue
+     * @brief Add a command to the queue
      * @param command Command to add
      */
     void addCommand(Command* command);
-
+    
     /**
      * @brief Execute all queued commands
      */
     void executeAll();
-
-    /**
-     * @brief Add a chat room to the user's room list
-     * @param room Chat room to add
-     */
+    
+    // Chat room management
     void addChatRoom(ChatRoom* room);
-
-    /**
-     * @brief Remove a chat room from the user's room list
-     * @param room Chat room to remove
-     */
     void removeChatRoom(ChatRoom* room);
-
-    /**
-     * @brief Check if user is registered in a specific chat room
-     * @param room Chat room to check
-     * @return true if user is in the room, false otherwise
-     */
     bool isInChatRoom(ChatRoom* room) const;
-
+    
+    // Strategy pattern methods (Context role)
     /**
-     * @brief Request an iterator for chat history (virtual - overridden by AdminUser)
-     * @param room The chat room to get history for
+     * @brief Set the validation strategy
+     * @param strategy New validation strategy
+     */
+    void setValidationStrategy(ValidationStrategy* strategy);
+    
+    /**
+     * @brief Get current validation strategy
+     * @return Current validation strategy
+     */
+    ValidationStrategy* getValidationStrategy() const;
+    
+    // Iterator pattern methods (default implementation - overridden by AdminUser)
+    /**
+     * @brief Request iterator for chat history (only admins get access)
+     * @param room Chat room to get iterator for
      * @return Iterator pointer or nullptr if access denied
      */
-    virtual Iterator* requestChatHistoryIterator(ChatRoom* room) { 
-        (void)room; // Suppress unused parameter warning
-        return nullptr;  // Non-admins get nullptr
-    }
+    virtual Iterator* requestChatHistoryIterator(ChatRoom* room) { return nullptr; }
     
     /**
-     * @brief Iterate through chat history (virtual - overridden by AdminUser)
-     * @param room The chat room to iterate through
+     * @brief Iterate through chat history (only admins can do this)
+     * @param room Chat room to iterate through
      */
-    virtual void iterateChatHistory(ChatRoom* room) {
-        (void)room; // Suppress unused parameter warning
-        std::cout << "Access denied - admin privileges required" << std::endl;
-    }
+    virtual void iterateChatHistory(ChatRoom* room) {}
+
+protected:
+    /**
+     * @brief Perform the actual send operation (common implementation)
+     * @param message Message to send
+     * @param room Chat room to send to
+     */
+    void performSend(std::string message, ChatRoom* room);
     
     /**
-     * @brief Check if user has admin privileges
-     * @return true if user is admin, false otherwise
+     * @brief Validate message using current strategy
+     * @param message Message to validate
+     * @return true if valid, false if blocked
      */
-    virtual bool hasAdminPrivileges() const { 
-        return getUserType() == UserType::ADMIN; 
-    }
+    bool validateMessage(const std::string& message);
 };
 
 /**
- * @class FreeUser
- * @brief Free user with daily message limitations
+ * @brief Free User - Basic functionality with restrictions
+ * Strategy: FreeUserValidationStrategy (short messages, no profanity, strict rules)
  */
 class FreeUser : public User {
 private:
-    static const int DAILY_MESSAGE_LIMIT = 5; ///< Maximum messages per day
-    int dailyMessageCount;                     ///< Current daily message count
+    static const int DAILY_MESSAGE_LIMIT = 10;
+    int dailyMessageCount;
 
 public:
     /**
      * @brief Constructor for FreeUser
-     * @param userName The user's name
+     * @param userName Name of the free user
      */
     FreeUser(std::string userName);
-
+    
     /**
-     * @brief Generate debug information specific to free users
-     * @return String containing free user debug information
+     * @brief Destructor
      */
-    virtual std::string toString() const override;
-
+    ~FreeUser() = default;
+    
+    std::string toString() const;
+    
     /**
-     * @brief Send a message (with daily limit check)
-     * @param message The message to send
-     * @param room The chat room to send to
-     * @return true if message was sent successfully, false if limit reached
+     * @brief Send message with free user restrictions
+     * @param message Message to send
+     * @param room Chat room to send to
+     * @return true if sent successfully, false if blocked
      */
-    virtual bool send(std::string message, ChatRoom* room) override;
-
-    /**
-     * @brief Reset the daily message count
-     */
+    bool send(std::string message, ChatRoom* room) override;
+    
+    // Free user specific methods
     void resetDailyCount();
-
-    /**
-     * @brief Get current daily message count
-     * @return Number of messages sent today
-     */
     int getDailyMessageCount() const;
-
-    /**
-     * @brief Get daily message limit
-     * @return Maximum messages allowed per day
-     */
     int getDailyMessageLimit() const;
 };
 
 /**
- * @class PremiumUser
- * @brief Premium user with unlimited messaging
+ * @brief Premium User - Enhanced functionality with fewer restrictions
+ * Strategy: PremiumUserValidationStrategy (unlimited length, mild language OK)
  */
 class PremiumUser : public User {
 public:
     /**
      * @brief Constructor for PremiumUser
-     * @param userName The user's name
+     * @param userName Name of the premium user
      */
     PremiumUser(std::string userName);
-
+    
     /**
-     * @brief Generate debug information specific to premium users
-     * @return String containing premium user debug information
+     * @brief Destructor
      */
-    virtual std::string toString() const override;
-
+    ~PremiumUser() = default;
+    
     /**
-     * @brief Send a message (unlimited)
-     * @param message The message to send
-     * @param room The chat room to send to
-     * @return true if message was sent successfully
+     * @brief Send message with premium user privileges
+     * @param message Message to send
+     * @param room Chat room to send to
+     * @return true if sent successfully, false if blocked
      */
-    virtual bool send(std::string message, ChatRoom* room) override;
+    bool send(std::string message, ChatRoom* room) override;
+
+    std::string toString() const;
 };
 
 /**
- * @class AdminUser
- * @brief Admin user with administrative privileges
+ * @brief Admin User - Full privileges and moderation capabilities
+ * Strategy: AdminUserValidationStrategy (minimal restrictions, moderation needs)
  */
 class AdminUser : public User {
 public:
     /**
      * @brief Constructor for AdminUser
-     * @param userName The user's name
+     * @param userName Name of the admin user
      */
     AdminUser(std::string userName);
-
+    
     /**
-     * @brief Generate debug information specific to admin users
-     * @return String containing admin user debug information
+     * @brief Destructor
      */
-    virtual std::string toString() const override;
-
+    ~AdminUser() = default;
+    
+    
     /**
-     * @brief Send a message with admin privileges
-     * @param message The message to send
-     * @param room The chat room to send to
-     * @return true if message was sent successfully
+     * @brief Send message with admin privileges
+     * @param message Message to send
+     * @param room Chat room to send to
+     * @return true if sent successfully, false if blocked
      */
-    virtual bool send(std::string message, ChatRoom* room) override;
-
+    bool send(std::string message, ChatRoom* room) override;
+    
     /**
-     * @brief Receive a message with additional admin logging
+     * @brief Receive message with admin monitoring
      * @param message The message content
      * @param fromUser The user who sent the message
-     * @param room The chat room the message was sent in
+     * @param room The chat room where the message was sent
      */
-    virtual void receive(std::string message, User* fromUser, ChatRoom* room) override;
-
+    void receive(std::string message, User* fromUser, ChatRoom* room) override;
+    
+    // Iterator pattern methods (admin-only access)
     /**
-     * @brief Override to provide admin access to chat history iterator
-     * @param room The chat room to get history for
-     * @return Iterator pointer for admin access
+     * @brief Request iterator for chat history (admin privilege)
+     * @param room Chat room to get iterator for
+     * @return Iterator pointer for admin use
      */
-    virtual Iterator* requestChatHistoryIterator(ChatRoom* room) override;
-
+    Iterator* requestChatHistoryIterator(ChatRoom* room) override;
+    
     /**
-     * @brief Iterate through chat history (admin only feature)
-     * @param room The chat room to review history for
+     * @brief Iterate through and display chat history (admin privilege)
+     * @param room Chat room to iterate through
      */
-    virtual void iterateChatHistory(ChatRoom* room) override;
+    void iterateChatHistory(ChatRoom* room) override;
+
+    std::string toString() const;
 };
 
 #endif // USERS_H

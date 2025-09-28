@@ -14,7 +14,8 @@
 #include "ConcreteAggregate.h"
 #include "SendMessageCommand.h"
 #include "SaveMessageCommand.h"
-#include "Logger.h"  // Added Logger support
+#include "Logger.h"
+#include "ValidationStrategy.h"
 
 void printSeparator(const std::string& title) {
     std::cout << "\n" << std::string(50, '=') << std::endl;
@@ -477,6 +478,165 @@ void testLoggerLevels() {
     delete testRoom;
 }
 
+/**
+ * @brief Test function for user-type-specific Strategy pattern
+ * Add this to your TestingMain.cpp
+ */
+
+void testUserTypeValidationStrategies() {
+    printSeparator("USER-TYPE VALIDATION STRATEGIES TEST");
+    
+    ChatRoom* testRoom = new CtrlCat();
+    
+    // Create users - each gets their specific validation strategy
+    std::cout << "\n--- Creating Users with Type-Specific Validation ---" << std::endl;
+    FreeUser* alice = new FreeUser("Alice");
+    PremiumUser* bob = new PremiumUser("Bob");
+    AdminUser* charlie = new AdminUser("Charlie");
+    
+    testRoom->registerUser(alice);
+    testRoom->registerUser(bob);
+    testRoom->registerUser(charlie);
+    
+    std::cout << "Alice (Free): " << alice->getValidationStrategy()->getMaxMessageLength() << " char limit" << std::endl;
+    std::cout << "Bob (Premium): " << (bob->getValidationStrategy()->getMaxMessageLength() == -1 ? "No limit" : std::to_string(bob->getValidationStrategy()->getMaxMessageLength())) << std::endl;
+    std::cout << "Charlie (Admin): " << charlie->getValidationStrategy()->getMaxMessageLength() << " char limit" << std::endl;
+    
+    // Test 1: Length Restrictions
+    std::cout << "\n=== Test 1: Message Length Restrictions ===\n" << std::endl;
+    
+    // Short message - should work for everyone
+    std::cout << "Short messages (should work for all):" << std::endl;
+    alice->send("Hi everyone!", testRoom);
+    bob->send("Hello from premium!", testRoom);
+    charlie->send("Admin here!", testRoom);
+    
+    // Medium message (101+ chars) - should fail for free user only
+    std::string mediumMessage = "This message is longer than 100 characters to test the free user limit. Free users are restricted.";
+    std::cout << "\nMedium message (" << mediumMessage.length() << " chars):" << std::endl;
+    alice->send(mediumMessage, testRoom);   // Should FAIL - too long for free user
+    bob->send(mediumMessage, testRoom);     // Should PASS - premium has no limit
+    charlie->send(mediumMessage, testRoom); // Should PASS - admin has high limit
+    
+    // Very long message - should work for premium and admin
+    std::string longMessage = "This is a very long message that demonstrates premium users have no length restrictions. ";
+    longMessage += "Premium users pay for the service and should be able to express themselves fully without arbitrary limits. ";
+    longMessage += "They can write detailed explanations, share stories, or provide comprehensive feedback. ";
+    longMessage += "This flexibility is one of the key benefits of upgrading from free to premium membership. ";
+    longMessage += "The system should handle these longer messages without any issues.";
+    
+    std::cout << "\nVery long message (" << longMessage.length() << " chars):" << std::endl;
+    alice->send(longMessage, testRoom);     // Should FAIL - way too long for free user
+    bob->send(longMessage, testRoom);       // Should PASS - premium unlimited
+    charlie->send(longMessage, testRoom);   // Should PASS - admin high limit
+    
+    // Test 2: Profanity Filtering by User Type
+    std::cout << "\n=== Test 2: User-Type-Specific Profanity Filtering ===\n" << std::endl;
+    
+    // Mild language - blocked for free, allowed for premium/admin
+    std::cout << "Mild inappropriate language:" << std::endl;
+    alice->send("This feature is stupid", testRoom);    // Should FAIL - free users blocked from mild words
+    bob->send("This feature is stupid", testRoom);      // Should PASS - premium allows mild language
+    charlie->send("This feature is stupid", testRoom);  // Should PASS - admin allows anything reasonable
+    
+    // Moderate language - allowed for premium/admin
+    std::cout << "\nModerate language:" << std::endl;
+    alice->send("That really sucks", testRoom);         // Should FAIL - free user restriction
+    bob->send("That really sucks", testRoom);           // Should PASS - premium tolerance
+    charlie->send("That really sucks", testRoom);       // Should PASS - admin privileges
+    
+    // Severe profanity - blocked for premium, allowed for admin
+    std::cout << "\nSevere profanity (testing system limits):" << std::endl;
+    alice->send("This is fucking broken", testRoom);    // Should FAIL - free user strict rules
+    bob->send("This is fucking broken", testRoom);      // Should FAIL - even premium has limits
+    charlie->send("This is fucking broken", testRoom);  // Should PASS - admin can handle moderation
+    
+    // Test 3: Caps and Spam Detection
+    std::cout << "\n=== Test 3: Caps and Spam Detection ===\n" << std::endl;
+    
+    // Moderate caps - strict for free users
+    std::cout << "Testing caps tolerance:" << std::endl;
+    alice->send("I LOVE CATS SO MUCH!", testRoom);      // Should FAIL - too many caps for free user (30% limit)
+    bob->send("I LOVE PREMIUM FEATURES!", testRoom);    // Should PASS - premium gets more caps tolerance
+    charlie->send("ADMIN ANNOUNCEMENT HERE!", testRoom); // Should PASS - admin unlimited
+    
+    // Excessive character repetition
+    std::cout << "\nTesting character repetition:" << std::endl;
+    alice->send("Woooooooo cats!", testRoom);           // Should FAIL - free users get strict limits
+    bob->send("Awesooooooooome!", testRoom);           // Should PASS - premium gets more tolerance
+    charlie->send("Hellooooooooooooooo!", testRoom);   // Should PASS - admin flexibility
+    
+    // Test 4: User Type Specific Benefits Demo
+    std::cout << "\n=== Test 4: User Type Benefits Demonstration ===\n" << std::endl;
+    
+    std::cout << "Free User Restrictions (Alice):" << std::endl;
+    alice->send("Short msgs only", testRoom);                    // PASS - within limits
+    alice->send("Can't say hate or stupid or dumb", testRoom);   // FAIL - contains blocked words
+    alice->send("No EXCESSIVE caps allowed", testRoom);          // FAIL - too many caps
+    
+    std::cout << "\nPremium User Benefits (Bob):" << std::endl;
+    bob->send("I can write much longer messages because I'm a premium user and I paid for this service so I should get better features and more flexibility in how I communicate with other users in the chat room", testRoom); // PASS - no length limit
+    bob->send("I can say things are stupid or dumb", testRoom);  // PASS - mild language allowed
+    bob->send("I CAN USE MORE CAPS IN MY MESSAGES", testRoom);  // PASS - higher caps tolerance
+    
+    std::cout << "\nAdmin Privileges (Charlie):" << std::endl;
+    charlie->send("As an admin, I can post very long announcements with detailed information about system updates, rule changes, moderation policies, and community guidelines. I can also use any language necessary for moderation purposes, including examples of inappropriate content when educating users about our policies.", testRoom); // PASS - high limit
+    charlie->send("I can use fucking strong language for moderation examples", testRoom); // PASS - admin moderation needs
+    charlie->send("ADMIN CAPS ANNOUNCEMENTS ARE ALLOWED", testRoom); // PASS - admin announcements
+    
+    // Test 5: System Threat Detection (Admin only restriction)
+    std::cout << "\n=== Test 5: System Threat Detection ===\n" << std::endl;
+    
+    std::cout << "Testing system threat detection for admin:" << std::endl;
+    charlie->send("Normal admin message", testRoom);             // Should PASS
+    charlie->send("DELETE FROM users", testRoom);                // Should FAIL - system threat
+    charlie->send("Let's reboot the server", testRoom);          // Should FAIL - system threat
+    
+    // Test 6: Edge Cases
+    std::cout << "\n=== Test 6: Edge Cases ===\n" << std::endl;
+    
+    // Empty messages
+    alice->send("", testRoom);
+    bob->send("", testRoom);
+    charlie->send("", testRoom);
+    
+    // Boundary testing
+    std::string exactly100chars = "This message is exactly one hundred characters long to test the free user boundary limits perfectly";
+    std::cout << "\nExactly 100 character message:" << std::endl;
+    alice->send(exactly100chars, testRoom);  // Should PASS - at the limit
+    
+    std::string exactly101chars = exactly100chars + "!";
+    std::cout << "Exactly 101 character message:" << std::endl;
+    alice->send(exactly101chars, testRoom);  // Should FAIL - over the limit
+    
+    // Test 7: Strategy Benefits Summary
+    std::cout << "\n=== User Type Strategy Summary ===\n" << std::endl;
+    Logger::user("FREE USERS (Alice):");
+    Logger::user("  - 100 character message limit");
+    Logger::user("  - No profanity (even mild words like 'stupid')"); 
+    Logger::user("  - Low caps tolerance (30%)");
+    Logger::user("  - Strict spam detection");
+    Logger::user("");
+    Logger::user("PREMIUM USERS (Bob):");
+    Logger::user("  - Unlimited message length");
+    Logger::user("  - Mild profanity allowed ('stupid', 'sucks')");
+    Logger::user("  - Higher caps tolerance (80%)");
+    Logger::user("  - Moderate spam detection");
+    Logger::user("  - Severe profanity still blocked");
+    Logger::user("");
+    Logger::user("ADMIN USERS (Charlie):");
+    Logger::user("  - 2000 character limit (for system stability)");
+    Logger::user("  - All language allowed (for moderation purposes)");
+    Logger::user("  - No caps restrictions");
+    Logger::user("  - Only system threats blocked");
+    
+    // Cleanup
+    delete alice;
+    delete bob;
+    delete charlie;
+    delete testRoom;
+}
+
 void KyleTest(){
     //just need to test random things
 
@@ -511,8 +671,10 @@ int main() {
     // testPolymorphism();
     // testIntegration();
     // testIterator();
-    //testLoggerLevels();  // New function to test all logger levels
-    KyleTest();
+    //testLoggerLevels();  
+    testUserTypeValidationStrategies();
+
+    //KyleTest();
     
     std::cout << "\n=== All Tests Complete ===" << std::endl;
     return 0;
