@@ -5,6 +5,7 @@
  */
 
 #include <iostream>
+#include <cassert>
 #include "Users.h"
 #include "ChatRoom.h"
 #include "CtrlCat.h"
@@ -27,16 +28,13 @@ void printSeparator(const std::string& title) {
 void testMediatorPattern() {
     printSeparator("MEDIATOR PATTERN TEST");
     
-    // Create mediators (chat rooms)
     ChatRoom* ctrlCat = new CtrlCat();
     ChatRoom* dogorithm = new Dogorithm();
     
-    // Create colleagues (users)
     User* alice = new PremiumUser("Alice");
     User* bob = new PremiumUser("Bob");
     User* charlie = new PremiumUser("Charlie");
     
-    // Register users with mediators
     std::cout << "\n--- User Registration ---" << std::endl;
     ctrlCat->registerUser(alice);
     ctrlCat->registerUser(bob);
@@ -45,7 +43,6 @@ void testMediatorPattern() {
     dogorithm->registerUser(alice);
     dogorithm->registerUser(bob);
     
-    // Test mediator communication
     std::cout << "\n--- Mediator Communication ---" << std::endl;
     alice->send("Hello everyone in CtrlCat!", ctrlCat);
     bob->send("Hi Alice! Great to chat!", ctrlCat);
@@ -54,7 +51,6 @@ void testMediatorPattern() {
     alice->send("Dogs are awesome too!", dogorithm);
     bob->send("I love all pets!", dogorithm);
     
-    // Cleanup
     delete alice;
     delete bob;
     delete charlie;
@@ -70,11 +66,9 @@ void testCommandPattern() {
     User* user = new PremiumUser("CommandTester");
     testRoom->registerUser(user);
     
-    // Test automatic command creation
     std::cout << "\n--- Automatic Command Creation ---" << std::endl;
     user->send("This creates commands automatically!", testRoom);
     
-    // Test manual command creation and queuing
     std::cout << "\n--- Manual Command Creation ---" << std::endl;
     Command* sendCmd1 = new SendMessageCommand(testRoom, user, "Manual command 1");
     Command* saveCmd1 = new SaveMessageCommand(testRoom, user, "Manual command 1");
@@ -89,7 +83,6 @@ void testCommandPattern() {
     std::cout << "Executing all queued commands:" << std::endl;
     user->executeAll();
     
-    // Cleanup
     delete user;
     delete testRoom;
 }
@@ -100,7 +93,6 @@ void testUserHierarchy() {
     
     ChatRoom* testRoom = new CtrlCat();
     
-    // Create different user types
     std::cout << "\n--- Creating Different User Types ---" << std::endl;
     FreeUser* freeUser = new FreeUser("FreeUserTest");
     PremiumUser* premiumUser = new PremiumUser("PremiumUserTest");
@@ -110,12 +102,11 @@ void testUserHierarchy() {
     testRoom->registerUser(premiumUser);
     testRoom->registerUser(adminUser);
     
-    // Test free user limits
     std::cout << "\n--- Testing Free User Limits ---" << std::endl;
     std::cout << "Free user limit: " << freeUser->getDailyMessageLimit() << " messages" << std::endl;
     
     for (int i = 1; i <= 12; i++) {
-        std::string message = "Test message #" + std::to_string(i);
+        std::string message = "Test message " + std::to_string(i);
         bool success = freeUser->send(message, testRoom);
         if (!success) {
             std::cout << "Message " << i << " blocked - limit reached!" << std::endl;
@@ -123,651 +114,739 @@ void testUserHierarchy() {
         }
     }
     
-    // Test premium user unlimited
     std::cout << "\n--- Testing Premium User Unlimited ---" << std::endl;
     premiumUser->send("Premium user message 1", testRoom);
     premiumUser->send("Premium user message 2", testRoom);
     premiumUser->send("Premium user message 3", testRoom);
     
-    // Test admin special privileges
     std::cout << "\n--- Testing Admin Special Privileges ---" << std::endl;
     adminUser->send("Admin message with special logging", testRoom);
     
-    // Test daily reset
     std::cout << "\n--- Testing Daily Reset ---" << std::endl;
     std::cout << "Before reset: " << freeUser->getDailyMessageCount() << "/" << freeUser->getDailyMessageLimit() << std::endl;
     freeUser->resetDailyCount();
     std::cout << "After reset: " << freeUser->getDailyMessageCount() << "/" << freeUser->getDailyMessageLimit() << std::endl;
     freeUser->send("Message after reset!", testRoom);
     
-    // Cleanup
     delete freeUser;
     delete premiumUser;
     delete adminUser;
     delete testRoom;
 }
 
+// ================== ITERATOR PATTERN TEST ==================
+void testIterator() {
+    printSeparator("ITERATOR PATTERN TEST");
+    
+    ChatRoom* testRoom = new CtrlCat();
+    
+    FreeUser* alice = new FreeUser("Alice");
+    PremiumUser* bob = new PremiumUser("Bob");  
+    AdminUser* charlie = new AdminUser("Charlie");
+    
+    std::cout << "\n--- User Registration ---" << std::endl;
+    testRoom->registerUser(alice);
+    testRoom->registerUser(bob);
+    testRoom->registerUser(charlie);
+    
+    std::cout << "\n--- Generating Chat History ---" << std::endl;
+    alice->send("Hello everyone!", testRoom);
+    bob->send("Hey Alice! How are you?", testRoom);
+    charlie->send("Admin here - great chat!", testRoom);
+    
+    std::cout << "\n--- Admin Iterator Access ---" << std::endl;
+    charlie->iterateChatHistory(testRoom);
+    
+    std::cout << "\n--- Non-Admin Access Denial ---" << std::endl;
+    Iterator* aliceIterator = alice->requestChatHistoryIterator(testRoom);
+    if (!aliceIterator) {
+        std::cout << "Correctly denied access to free user" << std::endl;
+    }
+    
+    Iterator* bobIterator = bob->requestChatHistoryIterator(testRoom);
+    if (!bobIterator) {
+        std::cout << "Correctly denied access to premium user" << std::endl;
+    }
+    
+    std::cout << "\n--- Manual Iterator Operations ---" << std::endl;
+    Iterator* manualIterator = charlie->requestChatHistoryIterator(testRoom);
+    
+    if (manualIterator) {
+        manualIterator->first();
+        std::cout << "First message: " << manualIterator->currentItem() << std::endl;
+        
+        manualIterator->next();
+        std::cout << "Second message: " << manualIterator->currentItem() << std::endl;
+        
+        while (!manualIterator->isDone()) {
+            manualIterator->next();
+        }
+        
+        std::cout << "Iteration complete" << std::endl;
+        delete manualIterator;
+    }
+    
+    delete alice;
+    delete bob;
+    delete charlie;
+    delete testRoom;
+}
+
+// ================== mutiple iterators test ==================
+void testMultipleIterators() {
+    ChatRoom* room = new CtrlCat();
+    AdminUser* admin1 = new AdminUser("Admin1");
+    AdminUser* admin2 = new AdminUser("Admin2");
+    
+    room->registerUser(admin1);
+    room->registerUser(admin2);
+    
+    admin1->send("Message 1", room);
+    admin1->send("Message 2", room);
+    
+    // Create two iterators simultaneously
+    Iterator* iter1 = admin1->requestChatHistoryIterator(room);
+    Iterator* iter2 = admin2->requestChatHistoryIterator(room);
+    
+    if (iter1 && iter2) {
+        iter1->first();
+        iter2->first();
+        
+        std::cout << "Iter1: " << iter1->currentItem() << std::endl;
+        std::cout << "Iter2: " << iter2->currentItem() << std::endl;
+        
+        iter1->next();
+        std::cout << "Iter1 next: " << iter1->currentItem() << std::endl;
+        std::cout << "Iter2 still: " << iter2->currentItem() << std::endl;
+        
+        delete iter1;
+        delete iter2;
+    }
+    
+    delete admin1;
+    delete admin2;
+    delete room;
+}
+
+//profanity test-----------------------
+void testProfanityInWords() {
+    ChatRoom* room = new CtrlCat();
+    FreeUser* free = new FreeUser("Free");
+    room->registerUser(free);
+    
+    // Test that "class" doesn't trigger "ass" filter
+    free->send("I love my class", room);
+    
+    // Test "assumptions" doesn't trigger
+    free->send("My assumptions are correct", room);
+    
+    // But "ass" alone should fail
+    free->send("You are an ass", room);
+    
+    delete free;
+    delete room;
+}
+
+//test users in chat room
+void testIsInChatRoom() {
+    ChatRoom* room1 = new CtrlCat();
+    ChatRoom* room2 = new Dogorithm();
+    FreeUser* user = new FreeUser("Test");
+    
+    room1->registerUser(user);
+    
+    // Test positive case
+    if (user->isInChatRoom(room1)) {
+        std::cout << "User is in room1" << std::endl;
+    }
+    
+    // Test negative case
+    if (!user->isInChatRoom(room2)) {
+        std::cout << "User is not in room2" << std::endl;
+    }
+    
+    delete user;
+    delete room1;
+    delete room2;
+}
+// ================== EDGE CASES TEST ==================
+void testEdgeCases() {
+    printSeparator("EDGE CASES TEST");
+    
+    ChatRoom* room = new CtrlCat();
+    FreeUser* user = new FreeUser("EdgeTester");
+    AdminUser* admin = new AdminUser("AdminEdge");
+    
+    room->registerUser(user);
+    room->registerUser(admin);
+    
+    std::cout << "\n--- Empty Message Test ---" << std::endl;
+    user->send("", room);
+    
+    std::cout << "\n--- Boundary Tests (100 chars) ---" << std::endl;
+    std::string exactly100(100, 'a');
+    user->send(exactly100, room);
+    
+    std::cout << "\n--- Just Over Boundary (101 chars) ---" << std::endl;
+    std::string exactly101(101, 'a');
+    user->send(exactly101, room);
+    
+    std::cout << "\n--- Unregistered User Test ---" << std::endl;
+    FreeUser* unregistered = new FreeUser("NotInRoom");
+    unregistered->send("Should fail", room);
+    
+    std::cout << "\n--- Iterator on Empty Room ---" << std::endl;
+    ChatRoom* emptyRoom = new Dogorithm();
+    admin->addChatRoom(emptyRoom);
+    admin->iterateChatHistory(emptyRoom);
+    
+    std::cout << "\n--- Iterator Edge Cases ---" << std::endl;
+    Iterator* iter = admin->requestChatHistoryIterator(room);
+    if (iter) {
+        // Navigate to end
+        while (!iter->isDone()) {
+            iter->next();
+        }
+        
+        // Try operations when done
+        std::cout << "Trying next when done..." << std::endl;
+        iter->next();
+        std::cout << "Trying currentItem when done: \"" << iter->currentItem() << "\"" << std::endl;
+        
+        // Reset and try again
+        iter->first();
+        std::cout << "After reset: " << iter->currentItem() << std::endl;
+        
+        delete iter;
+    }
+    
+    std::cout << "\n--- Remove Non-Existent User ---" << std::endl;
+    FreeUser* notInRoom = new FreeUser("Ghost");
+    room->removeUser(notInRoom);
+    
+    std::cout << "\n--- Null Parameter Tests ---" << std::endl;
+    const std::vector<std::string>* nullHistory = room->getChatHistory(nullptr);
+    if (!nullHistory) {
+        std::cout << "Correctly handled null user for history" << std::endl;
+    }
+    
+    Iterator* nullIter = room->createIterator(nullptr);
+    if (!nullIter) {
+        std::cout << "Correctly handled null user for iterator" << std::endl;
+    }
+    
+    std::cout << "\n--- Double Registration Test ---" << std::endl;
+    room->registerUser(user);  // Already registered
+    
+    delete user;
+    delete admin;
+    delete unregistered;
+    delete notInRoom;
+    delete room;
+    delete emptyRoom;
+}
+
+// ================== VALIDATION STRATEGY BOUNDARIES TEST ==================
+void testValidationBoundaries() {
+    printSeparator("VALIDATION STRATEGY BOUNDARIES TEST");
+    
+    ChatRoom* room = new CtrlCat();
+    
+    FreeUser* free = new FreeUser("Free");
+    PremiumUser* premium = new PremiumUser("Premium");
+    AdminUser* admin = new AdminUser("Admin");
+    
+    room->registerUser(free);
+    room->registerUser(premium);
+    room->registerUser(admin);
+    
+    std::cout << "\n--- Free User Profanity Tests ---" << std::endl;
+    free->send("This is stupid", room);
+    free->send("I hate this", room);
+    free->send("This sucks", room);
+    
+    std::cout << "\n--- Premium User Mild Profanity ---" << std::endl;
+    premium->send("This is stupid but works", room);
+    premium->send("That sucks but allowed", room);
+    
+    std::cout << "\n--- Premium User Severe Profanity ---" << std::endl;
+    premium->send("This is fucking broken", room);
+    premium->send("What the shit", room);
+    
+    std::cout << "\n--- Admin System Threats ---" << std::endl;
+    admin->send("Normal admin message", room);
+    admin->send("DELETE FROM users", room);
+    admin->send("shutdown now", room);
+    admin->send("rm -rf /", room);
+    
+    std::cout << "\n--- Caps Limit Tests ---" << std::endl;
+    free->send("HELLO WORLD TEST", room);
+    premium->send("HELLO PREMIUM WORLD", room);
+    admin->send("ADMIN ANNOUNCEMENT", room);
+    
+    std::cout << "\n--- Character Repetition Tests ---" << std::endl;
+    free->send("Hellooooo", room);
+    premium->send("Awesooooooome!", room);
+    
+    std::cout << "\n--- Whitespace Tests ---" << std::endl;
+    free->send("   ", room);
+    premium->send("     ", room);
+    
+    delete free;
+    delete premium;
+    delete admin;
+    delete room;
+}
+
+// ================== USER LIMITS TEST ==================
+void testUserLimits() {
+    printSeparator("USER LIMITS TEST");
+    
+    ChatRoom* room = new CtrlCat();
+    FreeUser* free = new FreeUser("LimitTester");
+    room->registerUser(free);
+    
+    std::cout << "\n--- Testing Exact Message Limit ---" << std::endl;
+    for (int i = 1; i <= 10; i++) {
+        bool result = free->send("Message " + std::to_string(i), room);
+        std::cout << "Message " << i << ": " << (result ? "Sent" : "Failed") << std::endl;
+    }
+    
+    std::cout << "\n--- Testing 11th Message (Should Fail) ---" << std::endl;
+    bool result = free->send("Message 11", room);
+    std::cout << "11th message result: " << (result ? "Sent" : "Failed") << std::endl;
+    
+    std::cout << "\n--- Testing After Reset ---" << std::endl;
+    free->resetDailyCount();
+    result = free->send("After reset", room);
+    std::cout << "After reset: " << (result ? "Sent" : "Failed") << std::endl;
+    
+    std::cout << "\n--- Testing Reset at Zero ---" << std::endl;
+    FreeUser* fresh = new FreeUser("FreshUser");
+    room->registerUser(fresh);
+    std::cout << "Count before: " << fresh->getDailyMessageCount() << std::endl;
+    fresh->resetDailyCount();
+    std::cout << "Count after: " << fresh->getDailyMessageCount() << std::endl;
+    
+    delete free;
+    delete fresh;
+    delete room;
+}
+
+// ================== COMMAND QUEUE TEST ==================
+void testCommandQueue() {
+    printSeparator("COMMAND QUEUE TEST");
+    
+    ChatRoom* room = new CtrlCat();
+    PremiumUser* user = new PremiumUser("QueueTester");
+    room->registerUser(user);
+    
+    std::cout << "\n--- Execute Empty Queue ---" << std::endl;
+    user->executeAll();
+    
+    std::cout << "\n--- Add Multiple Commands ---" << std::endl;
+    Command* cmd1 = new SendMessageCommand(room, user, "Command 1");
+    Command* cmd2 = new SaveMessageCommand(room, user, "Command 1");
+    Command* cmd3 = new SendMessageCommand(room, user, "Command 2");
+    
+    user->addCommand(cmd1);
+    user->addCommand(cmd2);
+    user->addCommand(cmd3);
+    
+    std::cout << "\n--- Execute All Commands ---" << std::endl;
+    user->executeAll();
+    
+    std::cout << "\n--- Queue Should Be Empty ---" << std::endl;
+    user->executeAll();
+    
+    delete user;
+    delete room;
+}
+
+// ================== CROSS-ROOM FUNCTIONALITY TEST ==================
+void testCrossRoomFunctionality() {
+    printSeparator("CROSS-ROOM FUNCTIONALITY TEST");
+    
+    ChatRoom* ctrlCat = new CtrlCat();
+    ChatRoom* dogorithm = new Dogorithm();
+    
+    PremiumUser* alice = new PremiumUser("Alice");
+    PremiumUser* bob = new PremiumUser("Bob");
+    
+    std::cout << "\n--- Register Users in Multiple Rooms ---" << std::endl;
+    ctrlCat->registerUser(alice);
+    ctrlCat->registerUser(bob);
+    
+    dogorithm->registerUser(alice);
+    dogorithm->registerUser(bob);
+    
+    std::cout << "\n--- Send to Different Rooms ---" << std::endl;
+    alice->send("Message in CtrlCat", ctrlCat);
+    alice->send("Message in Dogorithm", dogorithm);
+    
+    std::cout << "\n--- Leave One Room ---" << std::endl;
+    ctrlCat->removeUser(alice);
+    
+    std::cout << "\n--- Try Sending to Left Room ---" << std::endl;
+    alice->send("Should fail in CtrlCat", ctrlCat);
+    alice->send("Should work in Dogorithm", dogorithm);
+    
+    std::cout << "\n--- Bob Still in Both Rooms ---" << std::endl;
+    bob->send("Bob in CtrlCat", ctrlCat);
+    bob->send("Bob in Dogorithm", dogorithm);
+    
+    delete alice;
+    delete bob;
+    delete ctrlCat;
+    delete dogorithm;
+}
+
+// ================== CONCRETE AGGREGATE TEST ==================
+void testConcreteAggregate() {
+    printSeparator("CONCRETE AGGREGATE TEST");
+    
+    ChatRoom* room = new CtrlCat();
+    AdminUser* admin = new AdminUser("AdminAgg");
+    PremiumUser* user = new PremiumUser("UserAgg");
+    
+    room->registerUser(admin);
+    room->registerUser(user);
+    
+    std::cout << "\n--- Generate History ---" << std::endl;
+    user->send("Message 1", room);
+    user->send("Message 2", room);
+    user->send("Message 3", room);
+    
+    std::cout << "\n--- Get History and Create Aggregate ---" << std::endl;
+    const std::vector<std::string>* history = room->getChatHistory(admin);
+    
+    if (history) {
+        ConcreteAggregate* aggregate = new ConcreteAggregate(history);
+        Iterator* aggIterator = aggregate->createIterator();
+        
+        std::cout << "\n--- Iterate Through Aggregate ---" << std::endl;
+        for (aggIterator->first(); !aggIterator->isDone(); aggIterator->next()) {
+            std::cout << "Via aggregate: " << aggIterator->currentItem() << std::endl;
+        }
+        
+        delete aggIterator;
+        delete aggregate;
+    }
+    
+    delete admin;
+    delete user;
+    delete room;
+}
+
 // ================== POLYMORPHISM TEST ==================
 void testPolymorphism() {
     printSeparator("POLYMORPHISM TEST");
     
-    ChatRoom* polyRoom = new CtrlCat();
+    ChatRoom* room = new CtrlCat();
     
-    // Create array of User pointers
     std::cout << "\n--- Polymorphic User Array ---" << std::endl;
     User* users[3];
     users[0] = new FreeUser("PolyFree");
     users[1] = new PremiumUser("PolyPremium");
     users[2] = new AdminUser("PolyAdmin");
     
-    // Register all users
     for (int i = 0; i < 3; i++) {
-        polyRoom->registerUser(users[i]);
+        room->registerUser(users[i]);
     }
     
-    // Test polymorphic behavior
     std::cout << "\n--- Polymorphic Method Calls ---" << std::endl;
     for (int i = 0; i < 3; i++) {
-        std::string message = "Message from " + users[i]->getUserTypeString() + " user";
+        std::string message = "Message from " + users[i]->getUserTypeString();
         std::cout << "\n" << users[i]->getName() << " (" << users[i]->getUserTypeString() << "):" << std::endl;
-        users[i]->send(message, polyRoom);
+        users[i]->send(message, room);
     }
     
-    // Cleanup
+    std::cout << "\n--- Polymorphic toString ---" << std::endl;
+    for (int i = 0; i < 3; i++) {
+        std::cout << users[i]->toString() << std::endl;
+    }
+    
     for (int i = 0; i < 3; i++) {
         delete users[i];
     }
-    delete polyRoom;
+    delete room;
 }
 
-// ================== INTEGRATION TEST ==================
-void testIntegration() {
-    printSeparator("INTEGRATION TEST - ALL PATTERNS TOGETHER");
+// ================== STRATEGY PATTERN TEST ==================
+void testStrategyPattern() {
+    printSeparator("STRATEGY PATTERN TEST");
     
-    // Create system
-    ChatRoom* ctrlCat = new CtrlCat();
-    ChatRoom* dogorithm = new Dogorithm();
+    ChatRoom* room = new CtrlCat();
     
-    User* alice = new FreeUser("Alice");
-    User* bob = new PremiumUser("Bob");
-    User* charlie = new AdminUser("Charlie");
+    FreeUser* free = new FreeUser("StrategyFree");
+    PremiumUser* premium = new PremiumUser("StrategyPremium");
+    AdminUser* admin = new AdminUser("StrategyAdmin");
     
-    // Register users
-    std::cout << "\n--- System Setup ---" << std::endl;
-    ctrlCat->registerUser(alice);
-    ctrlCat->registerUser(bob);
-    ctrlCat->registerUser(charlie);
+    room->registerUser(free);
+    room->registerUser(premium);
+    room->registerUser(admin);
     
-    dogorithm->registerUser(alice);
-    dogorithm->registerUser(bob);
-    dogorithm->registerUser(charlie);
+    std::cout << "\n--- Strategy Information ---" << std::endl;
+    std::cout << "Free strategy: " << free->getValidationStrategy()->getStrategyName() << std::endl;
+    std::cout << "Free max length: " << free->getValidationStrategy()->getMaxMessageLength() << std::endl;
     
-    // Realistic conversation flow
-    std::cout << "\n--- Realistic Chat Scenario ---" << std::endl;
-    bob->send("Welcome to PetSpace everyone!", ctrlCat);
-    alice->send("Thanks! I love cats!", ctrlCat);
-    charlie->send("Admin here - great conversation!", ctrlCat);
+    std::cout << "Premium strategy: " << premium->getValidationStrategy()->getStrategyName() << std::endl;
+    std::cout << "Premium max length: " << premium->getValidationStrategy()->getMaxMessageLength() << std::endl;
     
-    alice->send("Dogs are cool too!", dogorithm);
-    bob->send("All pets are amazing!", dogorithm);
+    std::cout << "Admin strategy: " << admin->getValidationStrategy()->getStrategyName() << std::endl;
+    std::cout << "Admin max length: " << admin->getValidationStrategy()->getMaxMessageLength() << std::endl;
     
-    // Manual command demonstration
-    std::cout << "\n--- Manual Command Integration ---" << std::endl;
-    Command* adminCmd1 = new SendMessageCommand(ctrlCat, charlie, "Admin announcement!");
-    Command* adminCmd2 = new SaveMessageCommand(ctrlCat, charlie, "Admin announcement!");
+    std::cout << "\n--- Different Behaviors with Same Message ---" << std::endl;
+    std::string testMsg = "This is stupid and sucks";
     
-    charlie->addCommand(adminCmd1);
-    charlie->addCommand(adminCmd2);
-    charlie->executeAll();
+    std::cout << "Free user: ";
+    free->send(testMsg, room);
     
-    // Cleanup
-    delete alice;
-    delete bob;
-    delete charlie;
-    delete ctrlCat;
-    delete dogorithm;
+    std::cout << "Premium user: ";
+    premium->send(testMsg, room);
+    
+    std::cout << "Admin user: ";
+    admin->send(testMsg, room);
+    
+    delete free;
+    delete premium;
+    delete admin;
+    delete room;
 }
 
-// ================== ITERATOR PATTERN TEST ==================
-void testIterator() {
-    printSeparator("ITERATOR PATTERN TEST");
+void testStrategyGetters() {
+    FreeUser* free = new FreeUser("Free");
     
-    // Create chat room and users
-    ChatRoom* testRoom = new CtrlCat();
+    ValidationStrategy* strategy = free->getValidationStrategy();
     
-    FreeUser* alice = new FreeUser("Alice");
-    PremiumUser* bob = new PremiumUser("Bob");  
-    AdminUser* charlie = new AdminUser("Charlie");
-    AdminUser* diana = new AdminUser("Diana");
+    // Call all getter methods
+    std::string name = strategy->getStrategyName();
+    int maxLen = strategy->getMaxMessageLength();
     
-    // Register users
-    std::cout << "\n--- User Registration ---" << std::endl;
-    testRoom->registerUser(alice);
-    testRoom->registerUser(bob);
-    testRoom->registerUser(charlie);
-    testRoom->registerUser(diana);
+    std::cout << "Strategy: " << name << ", Max: " << maxLen << std::endl;
     
-    // Generate some chat history
-    std::cout << "\n--- Generating Chat History ---" << std::endl;
-    alice->send("Hello everyone!", testRoom);
-    bob->send("Hey Alice! How's everyone doing?", testRoom);
-    charlie->send("Admin here - great to see active chat!", testRoom);
-    bob->send("Thanks for keeping the chat safe, Charlie!", testRoom);
-    alice->send("This is a really nice chat system!", testRoom);
-    diana->send("Another admin checking in - all looks good!", testRoom);
-    
-    // Test 1: Admin access to chat history
-    std::cout << "\n--- Test 1: Admin Iterator Access ---" << std::endl;
-    std::cout << "Testing admin Charlie's access to chat history..." << std::endl;
-    charlie->iterateChatHistory(testRoom);
-    
-    // Test 2: Multiple admin access
-    std::cout << "\n--- Test 2: Multiple Admin Access ---" << std::endl;
-    std::cout << "Testing admin Diana's access to same chat history..." << std::endl;
-    diana->iterateChatHistory(testRoom);
-    
-    // Test 3: Non-admin access denial (Free User)
-    std::cout << "\n--- Test 3: Non-Admin Access Denial (Free User) ---" << std::endl;
-    std::cout << "Testing free user Alice's access (should be denied)..." << std::endl;
-    Iterator* aliceIterator = alice->requestChatHistoryIterator(testRoom);
-    if (!aliceIterator) {
-        std::cout << "✓ Correctly denied access to free user" << std::endl;
-    } else {
-        std::cout << "✗ ERROR: Free user should not have access!" << std::endl;
-        delete aliceIterator;
-    }
-    
-    // Test 4: Non-admin access denial (Premium User)  
-    std::cout << "\n--- Test 4: Non-Admin Access Denial (Premium User) ---" << std::endl;
-    std::cout << "Testing premium user Bob's access (should be denied)..." << std::endl;
-    Iterator* bobIterator = bob->requestChatHistoryIterator(testRoom);
-    if (!bobIterator) {
-        std::cout << "✓ Correctly denied access to premium user" << std::endl;
-    } else {
-        std::cout << "✗ ERROR: Premium user should not have access!" << std::endl;
-        delete bobIterator;
-    }
-    
-    // Test 5: Manual iterator operations
-    std::cout << "\n--- Test 5: Manual Iterator Operations ---" << std::endl;
-    std::cout << "Testing manual iterator control by admin Charlie..." << std::endl;
-    Iterator* manualIterator = charlie->requestChatHistoryIterator(testRoom);
-    
-    if (manualIterator) {
-        std::cout << "Manual iteration test:" << std::endl;
-        
-        // Test first()
-        manualIterator->first();
-        std::cout << "First message: " << manualIterator->currentItem() << std::endl;
-        
-        // Test next() a few times
-        manualIterator->next();
-        std::cout << "Second message: " << manualIterator->currentItem() << std::endl;
-        
-        manualIterator->next();
-        std::cout << "Third message: " << manualIterator->currentItem() << std::endl;
-        
-        // Test isDone() in middle
-        std::cout << "Is iteration done? " << (manualIterator->isDone() ? "Yes" : "No") << std::endl;
-        
-        // Iterate to the end
-        std::cout << "Continuing to end..." << std::endl;
-        while (!manualIterator->isDone()) {
-            manualIterator->next();
-            if (!manualIterator->isDone()) {
-                std::cout << "Message: " << manualIterator->currentItem() << std::endl;
-            }
-        }
-        
-        // Test isDone() at end
-        std::cout << "Is iteration done now? " << (manualIterator->isDone() ? "Yes" : "No") << std::endl;
-        
-        // Test accessing item when done
-        std::cout << "Attempting to access item when done: \"" << manualIterator->currentItem() << "\"" << std::endl;
-        
-        // Test reset with first()
-        std::cout << "Resetting iterator..." << std::endl;
-        manualIterator->first();
-        std::cout << "After reset - First message: " << manualIterator->currentItem() << std::endl;
-        
-        delete manualIterator;
-    }
-    
-    // Test 6: Empty chat room iterator
-    std::cout << "\n--- Test 6: Empty Chat Room Iterator ---" << std::endl;
-    ChatRoom* emptyRoom = new Dogorithm();
-    charlie->addChatRoom(emptyRoom);
-    
-    std::cout << "Testing iterator on empty chat room..." << std::endl;
-    charlie->iterateChatHistory(emptyRoom);
-    
-    // Test 7: Iterator after adding more messages
-    std::cout << "\n--- Test 7: Iterator After Adding More Messages ---" << std::endl;
-    std::cout << "Adding more messages to original room..." << std::endl;
-    bob->send("One more message!", testRoom);
-    alice->send("And another one!", testRoom);
-    
-    std::cout << "Admin checking updated history:" << std::endl;
-    charlie->iterateChatHistory(testRoom);
-    
-    // Test 8: Aggregate interface (direct access)
-    std::cout << "\n--- Test 8: Direct Aggregate Interface ---" << std::endl;
-    std::cout << "Testing direct aggregate createIterator() method..." << std::endl;
-    Iterator* directIterator = testRoom->createIterator();
-    
-    if (directIterator) {
-        std::cout << "Direct iterator created successfully" << std::endl;
-        std::cout << "First message via direct iterator: ";
-        directIterator->first();
-        std::cout << directIterator->currentItem() << std::endl;
-        delete directIterator;
-    }
-    
-    // Test 9: ConcreteAggregate usage
-    std::cout << "\n--- Test 9: ConcreteAggregate Direct Usage ---" << std::endl;
-    const std::vector<std::string>* history = testRoom->getChatHistory(charlie);
-    if (history) {
-        ConcreteAggregate* aggregate = new ConcreteAggregate(history);
-        Iterator* aggIterator = aggregate->createIterator();
-        
-        std::cout << "ConcreteAggregate iterator test:" << std::endl;
-        aggIterator->first();
-        std::cout << "First via ConcreteAggregate: " << aggIterator->currentItem() << std::endl;
-        
-        delete aggIterator;
-        delete aggregate;
-    }
-    
-    std::cout << "\n--- Iterator Pattern Integration Summary ---" << std::endl;
-    std::cout << "✓ Admin users can access chat history via iterator" << std::endl;
-    std::cout << "✓ Non-admin users are properly denied access" << std::endl;
-    std::cout << "✓ Iterator operations work correctly (first, next, isDone, currentItem)" << std::endl;
-    std::cout << "✓ Iterator handles empty collections safely" << std::endl;
-    std::cout << "✓ Iterator updates with new messages" << std::endl;
-    std::cout << "✓ Both admin-controlled and direct aggregate access work" << std::endl;
-    std::cout << "✓ Memory management handled properly" << std::endl;
-    
-    // Cleanup
-    delete alice;
-    delete bob;
-    delete charlie;
-    delete diana;
-    delete testRoom;
-    delete emptyRoom;
+    delete free;
 }
 
-// ================== LOGGER LEVELS TEST ==================
-void testLoggerLevels() {
-    printSeparator("LOGGER LEVELS TEST");
-    std::cout << "This test shows the difference between logging levels:" << std::endl;
-    std::cout << "- NONE: Silent mode" << std::endl;
-    std::cout << "- USER_ONLY: Natural chat experience" << std::endl;
-    std::cout << "- BASIC: System notifications" << std::endl;
-    std::cout << "- DEBUG: Full development details" << std::endl;
+void testBaseCreateIterator() {
+    ChatRoom* room = new CtrlCat();
+    PremiumUser* user = new PremiumUser("Test");
+    room->registerUser(user);
     
-    ChatRoom* testRoom = new CtrlCat();
-    User* alice = new FreeUser("Alice");
-    User* bob = new PremiumUser("Bob");
-    AdminUser* charlie = new AdminUser("Charlie");
+    user->send("Test message", room);
     
-    std::cout << "\n--- Setting up users (BASIC level to see system info) ---" << std::endl;
-    Logger::setLevel(BASIC);
-    testRoom->registerUser(alice);
-    testRoom->registerUser(bob);
-    testRoom->registerUser(charlie);
+    // Call the base Aggregate::createIterator() directly
+    Iterator* baseIter = room->createIterator();  // No user parameter
     
-    std::cout << "\n=== Test 1: NONE Level ===\n[Should see only this text, then silence]\n" << std::endl;
-    Logger::setLevel(NONE);
-    alice->send("This message should be completely silent", testRoom);
-    bob->send("No output should appear for this", testRoom);
-    
-    std::cout << "\n=== Test 2: USER_ONLY Level ===\n[Natural chat experience]\n" << std::endl;
-    Logger::setLevel(USER_ONLY);
-    alice->send("Hey everyone! How's the chat going?", testRoom);
-    bob->send("Great to see you Alice!", testRoom);
-    charlie->send("Admin here - welcome to PetSpace!", testRoom);
-    bob->send("Thanks for keeping things running smoothly!", testRoom);
-    
-    std::cout << "\n--- Testing Free User Limit (USER_ONLY) ---" << std::endl;
-    for (int i = 0; i < 3; i++) {
-        alice->send("Testing my daily limit " + std::to_string(i+1), testRoom);
+    if (baseIter) {
+        std::cout << "Base iterator created" << std::endl;
+        baseIter->first();
+        std::cout << baseIter->currentItem() << std::endl;
+        delete baseIter;
     }
     
-    std::cout << "\n--- Admin viewing chat history (USER_ONLY) ---" << std::endl;
-    charlie->iterateChatHistory(testRoom);
-    
-    std::cout << "\n=== Test 3: BASIC Level ===\n[Adds system operations]\n" << std::endl;
-    Logger::setLevel(BASIC);
-    
-    // Create fresh users to show join messages
-    User* diana = new FreeUser("Diana");
-    testRoom->registerUser(diana);
-    
-    diana->send("I just joined! This is exciting!", testRoom);
-    alice->send("Welcome Diana!", testRoom);
-    
-    
-    // Show user leaving
-    testRoom->removeUser(diana);
-    
-    std::cout << "\n=== Test 4: DEBUG Level ===\n[Full development details]\n" << std::endl;
-    Logger::setLevel(DEBUG);
-    
-    alice->send("Now you can see everything happening internally!", testRoom);
-    
-    // Show manual command creation in debug
-    std::cout << "\n--- Manual Command Creation (DEBUG level) ---" << std::endl;
-    Command* cmd1 = new SendMessageCommand(testRoom, bob, "Manual debug command");
-    Command* cmd2 = new SaveMessageCommand(testRoom, bob, "Manual debug command");
-    bob->addCommand(cmd1);
-    bob->addCommand(cmd2);
-    bob->executeAll();
-    
-    std::cout << "\n=== Summary ===\n" << std::endl;
-    Logger::setLevel(USER_ONLY);  // Reset to clean
-    std::cout << "✓ NONE: Complete silence for production" << std::endl;
-    std::cout << "✓ USER_ONLY: Natural chat experience for demos" << std::endl;
-    std::cout << "✓ BASIC: System operations for monitoring" << std::endl;
-    std::cout << "✓ DEBUG: Full pattern details for development" << std::endl;
-    
-    // Cleanup
-    delete alice;
-    delete bob;
-    delete charlie;
-    delete diana;
-    delete testRoom;
+    delete user;
+    delete room;
 }
 
-/**
- * @brief Test function for user-type-specific Strategy pattern
- * Add this to your TestingMain.cpp
- */
-
-void testUserTypeValidationStrategies() {
-    printSeparator("USER-TYPE VALIDATION STRATEGIES TEST");
+// ================== RECEIVE METHOD TEST ==================
+void testReceiveMethod() {
+    printSeparator("RECEIVE METHOD TEST");
     
-    ChatRoom* testRoom = new CtrlCat();
+    ChatRoom* room = new CtrlCat();
+    PremiumUser* sender = new PremiumUser("Sender");
+    PremiumUser* receiver = new PremiumUser("Receiver");
+    AdminUser* adminReceiver = new AdminUser("AdminReceiver");
     
-    // Create users - each gets their specific validation strategy
-    std::cout << "\n--- Creating Users with Type-Specific Validation ---" << std::endl;
-    FreeUser* alice = new FreeUser("Alice");
-    PremiumUser* bob = new PremiumUser("Bob");
-    AdminUser* charlie = new AdminUser("Charlie");
+    room->registerUser(sender);
+    room->registerUser(receiver);
+    room->registerUser(adminReceiver);
     
-    testRoom->registerUser(alice);
-    testRoom->registerUser(bob);
-    testRoom->registerUser(charlie);
+    std::cout << "\n--- Testing receive() through sendMessage ---" << std::endl;
+    sender->send("Test receive method", room);
     
-    std::cout << "Alice (Free): " << alice->getValidationStrategy()->getMaxMessageLength() << " char limit" << std::endl;
-    std::cout << "Bob (Premium): " << (bob->getValidationStrategy()->getMaxMessageLength() == -1 ? "No limit" : std::to_string(bob->getValidationStrategy()->getMaxMessageLength())) << std::endl;
-    std::cout << "Charlie (Admin): " << charlie->getValidationStrategy()->getMaxMessageLength() << " char limit" << std::endl;
-    
-    // Test 1: Length Restrictions
-    std::cout << "\n=== Test 1: Message Length Restrictions ===\n" << std::endl;
-    
-    // Short message - should work for everyone
-    std::cout << "Short messages (should work for all):" << std::endl;
-    alice->send("Hi everyone!", testRoom);
-    bob->send("Hello from premium!", testRoom);
-    charlie->send("Admin here!", testRoom);
-    
-    // Medium message (101+ chars) - should fail for free user only
-    std::string mediumMessage = "This message is longer than 100 characters to test the free user limit. Free users are restricted....";
-    std::cout << "\nMedium message (" << mediumMessage.length() << " chars):" << std::endl;
-    alice->send(mediumMessage, testRoom);   // Should FAIL - too long for free user
-    bob->send(mediumMessage, testRoom);     // Should PASS - premium has no limit
-    charlie->send(mediumMessage, testRoom); // Should PASS - admin has high limit
-    
-    // Very long message - should work for premium and admin
-    std::string longMessage = "This is a very long message that demonstrates premium users have no length restrictions. ";
-    longMessage += "Premium users pay for the service and should be able to express themselves fully without arbitrary limits. ";
-    longMessage += "They can write detailed explanations, share stories, or provide comprehensive feedback. ";
-    longMessage += "This flexibility is one of the key benefits of upgrading from free to premium membership. ";
-    longMessage += "The system should handle these longer messages without any issues.";
-    
-    std::cout << "\nVery long message (" << longMessage.length() << " chars):" << std::endl;
-    alice->send(longMessage, testRoom);     // Should FAIL - way too long for free user
-    bob->send(longMessage, testRoom);       // Should PASS - premium unlimited
-    charlie->send(longMessage, testRoom);   // Should PASS - admin high limit
-    
-    // Test 2: Profanity Filtering by User Type
-    std::cout << "\n=== Test 2: User-Type-Specific Profanity Filtering ===\n" << std::endl;
-    
-    // Mild language - blocked for free, allowed for premium/admin
-    std::cout << "Mild inappropriate language:" << std::endl;
-    alice->send("This feature is stupid", testRoom);    // Should FAIL - free users blocked from mild words
-    bob->send("This feature is stupid", testRoom);      // Should PASS - premium allows mild language
-    charlie->send("This feature is stupid", testRoom);  // Should PASS - admin allows anything reasonable
-    
-    // Moderate language - allowed for premium/admin
-    std::cout << "\nModerate language:" << std::endl;
-    alice->send("That really sucks", testRoom);         // Should FAIL - free user restriction
-    bob->send("That really sucks", testRoom);           // Should PASS - premium tolerance
-    charlie->send("That really sucks", testRoom);       // Should PASS - admin privileges
-    
-    // Severe profanity - blocked for premium, allowed for admin
-    std::cout << "\nSevere profanity (testing system limits):" << std::endl;
-    alice->send("This is fucking broken", testRoom);    // Should FAIL - free user strict rules
-    bob->send("This is fucking broken", testRoom);      // Should FAIL - even premium has limits
-    charlie->send("This is fucking broken", testRoom);  // Should PASS - admin can handle moderation
-    
-    // Test 3: Caps and Spam Detection
-    std::cout << "\n=== Test 3: Caps and Spam Detection ===\n" << std::endl;
-    
-    // Moderate caps - strict for free users
-    std::cout << "Testing caps tolerance:" << std::endl;
-    alice->send("I LOVE CATS SO MUCH!", testRoom);      // Should FAIL - too many caps for free user (30% limit)
-    bob->send("I LOVE PREMIUM FEATURES!", testRoom);    // Should PASS - premium gets more caps tolerance
-    charlie->send("ADMIN ANNOUNCEMENT HERE!", testRoom); // Should PASS - admin unlimited
-    
-    // Excessive character repetition
-    std::cout << "\nTesting character repetition:" << std::endl;
-    alice->send("Woooooooo cats!", testRoom);           // Should FAIL - free users get strict limits
-    bob->send("Awesooooooooome!", testRoom);           // Should PASS - premium gets more tolerance
-    charlie->send("Hellooooooooooooooo!", testRoom);   // Should PASS - admin flexibility
-    
-    // Test 4: User Type Specific Benefits Demo
-    std::cout << "\n=== Test 4: User Type Benefits Demonstration ===\n" << std::endl;
-    
-    std::cout << "Free User Restrictions (Alice):" << std::endl;
-    alice->send("Short msgs only", testRoom);                    // PASS - within limits
-    alice->send("Can't say hate or stupid or dumb", testRoom);   // FAIL - contains blocked words
-    alice->send("No EXCESSIVE caps allowed", testRoom);          // FAIL - too many caps
-    
-    std::cout << "\nPremium User Benefits (Bob):" << std::endl;
-    bob->send("I can write much longer messages because I'm a premium user and I paid for this service so I should get better features and more flexibility in how I communicate with other users in the chat room", testRoom); // PASS - no length limit
-    bob->send("I can say things are stupid or dumb", testRoom);  // PASS - mild language allowed
-    bob->send("I CAN USE MORE CAPS IN MY MESSAGES", testRoom);  // PASS - higher caps tolerance
-    
-    std::cout << "\nAdmin Privileges (Charlie):" << std::endl;
-    charlie->send("As an admin, I can post very long announcements with detailed information about system updates, rule changes, moderation policies, and community guidelines. I can also use any language necessary for moderation purposes, including examples of inappropriate content when educating users about our policies.", testRoom); // PASS - high limit
-    charlie->send("I can use fucking strong language for moderation examples", testRoom); // PASS - admin moderation needs
-    charlie->send("ADMIN CAPS ANNOUNCEMENTS ARE ALLOWED", testRoom); // PASS - admin announcements
-    
-    // Test 5: System Threat Detection (Admin only restriction)
-    std::cout << "\n=== Test 5: System Threat Detection ===\n" << std::endl;
-    
-    std::cout << "Testing system threat detection for admin:" << std::endl;
-    charlie->send("Normal admin message", testRoom);             // Should PASS
-    charlie->send("DELETE FROM users", testRoom);                // Should FAIL - system threat
-    charlie->send("Let's reboot the server", testRoom);          // Should FAIL - system threat
-    
-    // Test 6: Edge Cases
-    std::cout << "\n=== Test 6: Edge Cases ===\n" << std::endl;
-    
-    // Empty messages
-    alice->send("", testRoom);
-    bob->send("", testRoom);
-    charlie->send("", testRoom);
-    
-    // Boundary testing
-    std::string exactly100chars = "This message is exactly one hundred characters long to test the free user boundary limits perfectly";
-    std::cout << "\nExactly 100 character message:" << std::endl;
-    alice->send(exactly100chars, testRoom);  // Should PASS - at the limit
-    
-    std::string exactly101chars = exactly100chars + "!";
-    std::cout << "Exactly 101 character message:" << std::endl;
-    alice->send(exactly101chars, testRoom);  // Should FAIL - over the limit
-    
-    // Test 7: Strategy Benefits Summary
-    std::cout << "\n=== User Type Strategy Summary ===\n" << std::endl;
-    Logger::user("FREE USERS (Alice):");
-    Logger::user("  - 100 character message limit");
-    Logger::user("  - No profanity (even mild words like 'stupid')"); 
-    Logger::user("  - Low caps tolerance (30%)");
-    Logger::user("  - Strict spam detection");
-    Logger::user("");
-    Logger::user("PREMIUM USERS (Bob):");
-    Logger::user("  - Unlimited message length");
-    Logger::user("  - Mild profanity allowed ('stupid', 'sucks')");
-    Logger::user("  - Higher caps tolerance (80%)");
-    Logger::user("  - Moderate spam detection");
-    Logger::user("  - Severe profanity still blocked");
-    Logger::user("");
-    Logger::user("ADMIN USERS (Charlie):");
-    Logger::user("  - 2000 character limit (for system stability)");
-    Logger::user("  - All language allowed (for moderation purposes)");
-    Logger::user("  - No caps restrictions");
-    Logger::user("  - Only system threats blocked");
-    
-    // Cleanup
-    delete alice;
-    delete bob;
-    delete charlie;
-    delete testRoom;
+    delete sender;
+    delete receiver;
+    delete adminReceiver;
+    delete room;
 }
 
-void superSimpleShortTest(LogLevel level = USER_ONLY) {
-    printSeparator("SUPER SIMPLE SHORT TEST - ALL PATTERNS");
+// ================== VALIDATION STRATEGY SWITCHING TEST ==================
+void testStrategySwitch() {
+    printSeparator("STRATEGY SWITCHING TEST");
     
-    Logger::setLevel(level);  // Use passed parameter
+    ChatRoom* room = new CtrlCat();
+    FreeUser* user = new FreeUser("SwitchTest");
+    room->registerUser(user);
     
-    // Setup
-    ChatRoom* ctrlCat = new CtrlCat();
-    ChatRoom* dogorithm = new Dogorithm();
-    FreeUser* alice = new FreeUser("Alice");
-    PremiumUser* bob = new PremiumUser("Bob");
-    AdminUser* charlie = new AdminUser("Charlie");
+    std::cout << "\n--- Original Strategy ---" << std::endl;
+    std::cout << "Strategy: " << user->getValidationStrategy()->getStrategyName() << std::endl;
+    user->send("Original message", room);
     
-    // 1. MEDIATOR - Users communicate through chat room
-    std::cout << "\n[1. MEDIATOR PATTERN]" << std::endl;
-    ctrlCat->registerUser(alice);
-    ctrlCat->registerUser(bob);
-    ctrlCat->registerUser(charlie);
+    std::cout << "\n--- Switch to Premium Strategy ---" << std::endl;
+    user->setValidationStrategy(new PremiumUserValidationStrategy());
+    std::cout << "New strategy: " << user->getValidationStrategy()->getStrategyName() << std::endl;
     
-    // Multiple users in same room
-    alice->send("Hello everyone!", ctrlCat);
-    bob->send("Hey Alice!", ctrlCat);
+    std::string longMsg(200, 'x');
+    user->send(longMsg, room);  // Should work now with premium strategy
     
-    // Cross-room communication (same users, different mediator)
-    dogorithm->registerUser(alice);
-    dogorithm->registerUser(bob);
-    alice->send("Dogs are great too!", dogorithm);
-    bob->send("I love all pets!", dogorithm);
+    delete user;
+    delete room;
+}
+
+// ================== CHAT HISTORY ACCESS TEST ==================
+void testChatHistoryAccess() {
+    printSeparator("CHAT HISTORY ACCESS TEST");
     
-    std::cout << "✓ Mediator coordinates communication in multiple chat rooms" << std::endl;
+    ChatRoom* room = new CtrlCat();
+    FreeUser* free = new FreeUser("FreeHistory");
+    PremiumUser* premium = new PremiumUser("PremiumHistory");
+    AdminUser* admin = new AdminUser("AdminHistory");
     
-    // 2. COMMAND - Commands encapsulate actions
-    std::cout << "\n[2. COMMAND PATTERN]" << std::endl;
-    Command* cmd = new SendMessageCommand(ctrlCat, bob, "Manual command message");
-    bob->addCommand(cmd);
-    bob->executeAll();
+    room->registerUser(free);
+    room->registerUser(premium);
+    room->registerUser(admin);
     
-    // 3. STRATEGY - Different validation rules per user type
-    std::cout << "\n[3. STRATEGY PATTERN]" << std::endl;
-    std::string s = "This message is way too long for a free user to send because it exceeds the 100 character limit........";
-    std::cout << "Message is: " << s.length() << " characters long" << std::endl;
-    alice->send(s, ctrlCat);  // Fails
-    bob->send("Premium users can send longer messages without any restrictions at all!", ctrlCat);  // Works
+    admin->send("History message 1", room);
+    admin->send("History message 2", room);
     
-    // 4. ITERATOR - Admin views chat history
-    std::cout << "\n[4. ITERATOR PATTERN]" << std::endl;
-    
-    // Generate more chat history
-    charlie->send("Admin checking in!", ctrlCat);
-    alice->send("Great to see you!", ctrlCat);
-    
-    // Admin iterates through entire history
-    std::cout << "Charlie viewing CtrlCat history:" << std::endl;
-    charlie->iterateChatHistory(ctrlCat);
-    
-    // Manual iterator control
-    std::cout << "\nManual iterator operations:" << std::endl;
-    Iterator* manualIter = charlie->requestChatHistoryIterator(ctrlCat);
-    if (manualIter) {
-        manualIter->first();
-        std::cout << "First message: " << manualIter->currentItem() << std::endl;
-        manualIter->next();
-        std::cout << "Second message: " << manualIter->currentItem() << std::endl;
-        std::cout << "Done? " << (manualIter->isDone() ? "Yes" : "No") << std::endl;
-        delete manualIter;
+    std::cout << "\n--- Free User Requesting History ---" << std::endl;
+    const std::vector<std::string>* freeHistory = room->getChatHistory(free);
+    if (!freeHistory) {
+        std::cout << "Correctly denied to free user" << std::endl;
     }
     
-    // Non-admin denied access
-    std::cout << "\nNon-admin access test:" << std::endl;
-    Iterator* aliceIter = alice->requestChatHistoryIterator(ctrlCat);
-    if (!aliceIter) {
-        std::cout << "✓ Alice (Free User) correctly denied iterator access" << std::endl;
+    std::cout << "\n--- Premium User Requesting History ---" << std::endl;
+    const std::vector<std::string>* premiumHistory = room->getChatHistory(premium);
+    if (!premiumHistory) {
+        std::cout << "Correctly denied to premium user" << std::endl;
     }
     
-    // 5. POLYMORPHISM - Same interface, different behaviors
-    std::cout << "\n[5. Random polymorphism test]" << std::endl;
-    User* users[3] = {alice, bob, charlie};
-    for (int i = 0; i < 3; i++) {
-        std::cout << users[i]->getName() << " is a " << users[i]->getUserTypeString() << std::endl;
+    std::cout << "\n--- Admin User Requesting History ---" << std::endl;
+    const std::vector<std::string>* adminHistory = room->getChatHistory(admin);
+    if (adminHistory) {
+        std::cout << "Admin got history with " << adminHistory->size() << " messages" << std::endl;
     }
     
-    std::cout << "\n All 4 patterns tested!" << std::endl;
+    delete free;
+    delete premium;
+    delete admin;
+    delete room;
+}
+void testSpecialCharacters() {
+    printSeparator("SPECIAL CHARACTERS TEST");
     
-    // Cleanup
-    delete alice;
-    delete bob;
-    delete charlie;
-    delete ctrlCat;
-    delete dogorithm;
+    ChatRoom* room = new CtrlCat();
+    PremiumUser* user = new PremiumUser("SpecialTest");
+    room->registerUser(user);
+    
+    std::cout << "\n--- Numbers ---" << std::endl;
+    user->send("12345", room);
+    
+    std::cout << "\n--- Special chars ---" << std::endl;
+    user->send("!@#$%^&*()", room);
+    
+    std::cout << "\n--- Mixed ---" << std::endl;
+    user->send("Test123!@#", room);
+    
+    std::cout << "\n--- Unicode/Emoji (if supported) ---" << std::endl;
+    user->send("Hello world 123", room);
+    
+    std::cout << "\n--- Newlines and tabs ---" << std::endl;
+    user->send("Line1\nLine2\tTabbed", room);
+    
+    delete user;
+    delete room;
+}
+void testDailyCountGetters() {
+    printSeparator("DAILY COUNT GETTERS TEST");
+    
+    ChatRoom* room = new CtrlCat();
+    FreeUser* free = new FreeUser("CountTest");
+    room->registerUser(free);
+    
+    std::cout << "Initial count: " << free->getDailyMessageCount() << std::endl;
+    std::cout << "Limit: " << free->getDailyMessageLimit() << std::endl;
+    
+    free->send("Message 1", room);
+    std::cout << "After 1 message: " << free->getDailyMessageCount() << std::endl;
+    
+    free->send("Message 2", room);
+    std::cout << "After 2 messages: " << free->getDailyMessageCount() << std::endl;
+    
+    free->resetDailyCount();
+    std::cout << "After reset: " << free->getDailyMessageCount() << std::endl;
+    
+    delete free;
+    delete room;
+}
+void testToStringMethods() {
+    printSeparator("TO STRING METHODS TEST");
+    
+    ChatRoom* room1 = new CtrlCat();
+    ChatRoom* room2 = new Dogorithm();
+    
+    FreeUser* free = new FreeUser("FreeString");
+    PremiumUser* premium = new PremiumUser("PremiumString");
+    AdminUser* admin = new AdminUser("AdminString");
+    
+    room1->registerUser(free);
+    room1->registerUser(premium);
+    room2->registerUser(admin);
+    
+    free->send("Test", room1);
+    free->send("Test", room1);
+    
+    std::cout << "\n--- Free User toString ---" << std::endl;
+    std::cout << free->toString();
+    
+    std::cout << "\n--- Premium User toString ---" << std::endl;
+    std::cout << premium->toString();
+    
+    std::cout << "\n--- Admin User toString ---" << std::endl;
+    std::cout << admin->toString();
+    
+    delete free;
+    delete premium;
+    delete admin;
+    delete room1;
+    delete room2;
 }
 
-void KyleTest(){
-    //just need to test random things
-
-    ChatRoom* ctrlCat = new CtrlCat();
-    ChatRoom* dogorithm = new Dogorithm();
-    
-    User* alice = new FreeUser("Alice");
-    User* bob = new PremiumUser("Bob");
-    User* charlie = new AdminUser("Charlie");
-    
-    // alice->send("hello cats",ctrlCat);
-    ctrlCat->registerUser(alice);
-    alice->send("hello guys",ctrlCat);
-    // alice->removeChatRoom(ctrlCat);
-    // alice->send("hello cats",ctrlCat);
-
-    delete alice;
-    delete bob;
-    delete charlie;
-    delete ctrlCat;
-    delete dogorithm;
-}
 
 // ================== MAIN FUNCTION ==================
 int main() {
-    Logger::setLevel(DEBUG);
-
-    // testMediatorPattern();
-    // testCommandPattern();
-    //  testUserHierarchy();
-    // testPolymorphism();
-    // testIntegration();
-    // testIterator();
-    // testLoggerLevels();  
-    //testUserTypeValidationStrategies();
-
-    //options - NONE, USER_ONLY, BASIC, DEBUG
-    superSimpleShortTest(DEBUG);
-
-    //KyleTest();
+    Logger::setLevel(USER_ONLY);
     
+    std::cout << "Starting Comprehensive Test Suite..." << std::endl;
+    
+    testMediatorPattern();
+    testCommandPattern();
+    testUserHierarchy();
+    testIterator();
+    testEdgeCases();
+    testValidationBoundaries();
+    testUserLimits();
+    testCommandQueue();
+    testCrossRoomFunctionality();
+    testConcreteAggregate();
+    testPolymorphism();
+    testStrategyPattern();
+
+     testMultipleIterators();
+    
+    testProfanityInWords();
+    
+    testIsInChatRoom();
+    testStrategyGetters();
+    testBaseCreateIterator();
+    
+    testChatHistoryAccess();
+    testStrategySwitch();
+    testReceiveMethod();
+
+    testDailyCountGetters();
+    testToStringMethods();
     std::cout << "\n=== All Tests Complete ===" << std::endl;
     return 0;
 }
