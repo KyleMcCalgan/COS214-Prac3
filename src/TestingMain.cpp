@@ -512,7 +512,7 @@ void testUserTypeValidationStrategies() {
     charlie->send("Admin here!", testRoom);
     
     // Medium message (101+ chars) - should fail for free user only
-    std::string mediumMessage = "This message is longer than 100 characters to test the free user limit. Free users are restricted.";
+    std::string mediumMessage = "This message is longer than 100 characters to test the free user limit. Free users are restricted....";
     std::cout << "\nMedium message (" << mediumMessage.length() << " chars):" << std::endl;
     alice->send(mediumMessage, testRoom);   // Should FAIL - too long for free user
     bob->send(mediumMessage, testRoom);     // Should PASS - premium has no limit
@@ -637,6 +637,96 @@ void testUserTypeValidationStrategies() {
     delete testRoom;
 }
 
+void superSimpleShortTest(LogLevel level = USER_ONLY) {
+    printSeparator("SUPER SIMPLE SHORT TEST - ALL PATTERNS");
+    
+    Logger::setLevel(level);  // Use passed parameter
+    
+    // Setup
+    ChatRoom* ctrlCat = new CtrlCat();
+    ChatRoom* dogorithm = new Dogorithm();
+    FreeUser* alice = new FreeUser("Alice");
+    PremiumUser* bob = new PremiumUser("Bob");
+    AdminUser* charlie = new AdminUser("Charlie");
+    
+    // 1. MEDIATOR - Users communicate through chat room
+    std::cout << "\n[1. MEDIATOR PATTERN]" << std::endl;
+    ctrlCat->registerUser(alice);
+    ctrlCat->registerUser(bob);
+    ctrlCat->registerUser(charlie);
+    
+    // Multiple users in same room
+    alice->send("Hello everyone!", ctrlCat);
+    bob->send("Hey Alice!", ctrlCat);
+    
+    // Cross-room communication (same users, different mediator)
+    dogorithm->registerUser(alice);
+    dogorithm->registerUser(bob);
+    alice->send("Dogs are great too!", dogorithm);
+    bob->send("I love all pets!", dogorithm);
+    
+    std::cout << "✓ Mediator coordinates communication in multiple chat rooms" << std::endl;
+    
+    // 2. COMMAND - Commands encapsulate actions
+    std::cout << "\n[2. COMMAND PATTERN]" << std::endl;
+    Command* cmd = new SendMessageCommand(ctrlCat, bob, "Manual command message");
+    bob->addCommand(cmd);
+    bob->executeAll();
+    
+    // 3. STRATEGY - Different validation rules per user type
+    std::cout << "\n[3. STRATEGY PATTERN]" << std::endl;
+    std::string s = "This message is way too long for a free user to send because it exceeds the 100 character limit........";
+    std::cout << "Message is: " << s.length() << " characters long" << std::endl;
+    alice->send(s, ctrlCat);  // Fails
+    bob->send("Premium users can send longer messages without any restrictions at all!", ctrlCat);  // Works
+    
+    // 4. ITERATOR - Admin views chat history
+    std::cout << "\n[4. ITERATOR PATTERN]" << std::endl;
+    
+    // Generate more chat history
+    charlie->send("Admin checking in!", ctrlCat);
+    alice->send("Great to see you!", ctrlCat);
+    
+    // Admin iterates through entire history
+    std::cout << "Charlie viewing CtrlCat history:" << std::endl;
+    charlie->iterateChatHistory(ctrlCat);
+    
+    // Manual iterator control
+    std::cout << "\nManual iterator operations:" << std::endl;
+    Iterator* manualIter = charlie->requestChatHistoryIterator(ctrlCat);
+    if (manualIter) {
+        manualIter->first();
+        std::cout << "First message: " << manualIter->currentItem() << std::endl;
+        manualIter->next();
+        std::cout << "Second message: " << manualIter->currentItem() << std::endl;
+        std::cout << "Done? " << (manualIter->isDone() ? "Yes" : "No") << std::endl;
+        delete manualIter;
+    }
+    
+    // Non-admin denied access
+    std::cout << "\nNon-admin access test:" << std::endl;
+    Iterator* aliceIter = alice->requestChatHistoryIterator(ctrlCat);
+    if (!aliceIter) {
+        std::cout << "✓ Alice (Free User) correctly denied iterator access" << std::endl;
+    }
+    
+    // 5. POLYMORPHISM - Same interface, different behaviors
+    std::cout << "\n[5. Random polymorphism test]" << std::endl;
+    User* users[3] = {alice, bob, charlie};
+    for (int i = 0; i < 3; i++) {
+        std::cout << users[i]->getName() << " is a " << users[i]->getUserTypeString() << std::endl;
+    }
+    
+    std::cout << "\n All 4 patterns tested!" << std::endl;
+    
+    // Cleanup
+    delete alice;
+    delete bob;
+    delete charlie;
+    delete ctrlCat;
+    delete dogorithm;
+}
+
 void KyleTest(){
     //just need to test random things
 
@@ -648,8 +738,8 @@ void KyleTest(){
     User* charlie = new AdminUser("Charlie");
     
     // alice->send("hello cats",ctrlCat);
-    //ctrlCat->registerUser(alice);
-    alice->send("hello cats",ctrlCat);
+    ctrlCat->registerUser(alice);
+    alice->send("hello guys",ctrlCat);
     // alice->removeChatRoom(ctrlCat);
     // alice->send("hello cats",ctrlCat);
 
@@ -662,17 +752,19 @@ void KyleTest(){
 
 // ================== MAIN FUNCTION ==================
 int main() {
-    // Set default logging level
-    Logger::setLevel(DEBUG);  // Clean experience by default
+    Logger::setLevel(DEBUG);
 
-    testMediatorPattern();
-    testCommandPattern();
-     testUserHierarchy();
-    testPolymorphism();
-    testIntegration();
-    testIterator();
-    testLoggerLevels();  
-    testUserTypeValidationStrategies();
+    // testMediatorPattern();
+    // testCommandPattern();
+    //  testUserHierarchy();
+    // testPolymorphism();
+    // testIntegration();
+    // testIterator();
+    // testLoggerLevels();  
+    //testUserTypeValidationStrategies();
+
+    //options - NONE, USER_ONLY, BASIC, DEBUG
+    superSimpleShortTest(DEBUG);
 
     //KyleTest();
     

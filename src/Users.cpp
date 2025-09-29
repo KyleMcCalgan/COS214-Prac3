@@ -16,22 +16,20 @@
 #include <iostream>
 #include <sstream>
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // ================== Base User Class ==================
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 User::User(std::string userName, UserType type) : name(userName), userType(type), validationStrategy(nullptr) {
-    // Don't set strategy here - let subclasses set their specific strategy
     Logger::debug("[" + getUserTypeString() + " User] " + name + " base constructor");
 }
 
 User::~User() {
-    // Clean up command queue
     std::vector<Command*>::iterator it;
     for (it = commandQueue.begin(); it != commandQueue.end(); it++) {
         delete *it;
     }
     commandQueue.clear();
-    
-    // Clean up validation strategy
     delete validationStrategy;
     
     Logger::debug("[" + getUserTypeString() + " User] " + name + " destroyed!");
@@ -79,8 +77,6 @@ std::string User::toString() const {
 }
 
 void User::receive(std::string message, User* fromUser, ChatRoom* room) {
-    // FIXED: Only show message once in clean format, no duplicate logging
-    // The message display is handled by ChatRoom::sendMessage() now
     (void)message;
     (void)room;
     Logger::debug("[" + name + "] Received message from " + fromUser->getName() + " (" + fromUser->getUserTypeString() + ")");
@@ -105,7 +101,7 @@ void User::executeAll() {
 }
 
 void User::addChatRoom(ChatRoom* room) {
-    // Check if room is already in the list
+
     for (std::vector<ChatRoom*>::iterator it = chatRooms.begin(); it != chatRooms.end(); it++) {
         if (*it == room) {
             Logger::debug("[" + name + "] Already in this chat room");
@@ -137,9 +133,8 @@ bool User::isInChatRoom(ChatRoom* room) const {
     return false;
 }
 
-// Strategy pattern methods
 void User::setValidationStrategy(ValidationStrategy* strategy) {
-    delete validationStrategy; // Clean up old strategy
+    delete validationStrategy;
     validationStrategy = strategy;
     Logger::debug("[" + name + "] Validation strategy changed to " + 
                   (strategy ? strategy->getStrategyName() : "None"));
@@ -159,15 +154,13 @@ bool User::validateMessage(const std::string& message) {
 }
 
 void User::performSend(std::string message, ChatRoom* room) {
-    // Check if user is actually in the room
     if (!isInChatRoom(room)) {
         Logger::user(name + " tried to send a message but isn't in the room!");
         return;
     }
     
     Logger::debug("[" + name + "] Sending message: \"" + message + "\"");
-    
-    // Create commands for sending and saving the message
+
     Command* sendCmd = new SendMessageCommand(room, this, message);
     Command* saveCmd = new SaveMessageCommand(room, this, message);
     
@@ -176,11 +169,11 @@ void User::performSend(std::string message, ChatRoom* room) {
     
     executeAll();
 }
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // ================== FreeUser Class ==================
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 FreeUser::FreeUser(std::string userName) : User(userName, UserType::FREE), dailyMessageCount(0) {
-    // Set the specific validation strategy for free users
     validationStrategy = new FreeUserValidationStrategy();
     
     Logger::info(name + " joined PetSpace (Free User - " + std::to_string(DAILY_MESSAGE_LIMIT) + 
@@ -190,7 +183,7 @@ FreeUser::FreeUser(std::string userName) : User(userName, UserType::FREE), daily
 
 std::string FreeUser::toString() const {
     std::stringstream ss;
-    ss << User::toString(); // Call base class toString
+    ss << User::toString();
     ss << "=== Free User Specific ===" << std::endl;
     ss << "Daily Messages Used: " << dailyMessageCount << "/" << DAILY_MESSAGE_LIMIT << std::endl;
     ss << "==========================" << std::endl;
@@ -199,25 +192,21 @@ std::string FreeUser::toString() const {
 }
 
 bool FreeUser::send(std::string message, ChatRoom* room) {
-    // Check daily message limit first
     if (dailyMessageCount >= DAILY_MESSAGE_LIMIT) {
         Logger::user(name + ": Daily message limit reached! Upgrade to Premium for unlimited messaging.");
         return false;
     }
-    
-    // Check if user is actually in the room
+
     if (!isInChatRoom(room)) {
         Logger::user(name + " tried to send a message but isn't in the room!");
         return false;
     }
-    
-    // Strategy pattern validation - this is where the magic happens!
+
     if (!validateMessage(message)) {
         Logger::debug("[" + name + "] Message blocked by " + validationStrategy->getStrategyName() + " strategy");
         return false;
     }
-    
-    // If we get here, message passed all validations
+
     dailyMessageCount++;
     Logger::debug("[" + name + "] Messages used today: " + std::to_string(dailyMessageCount) + 
                   "/" + std::to_string(DAILY_MESSAGE_LIMIT));
@@ -238,11 +227,11 @@ int FreeUser::getDailyMessageCount() const {
 int FreeUser::getDailyMessageLimit() const {
     return DAILY_MESSAGE_LIMIT;
 }
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // ================== PremiumUser Class ==================
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 PremiumUser::PremiumUser(std::string userName) : User(userName, UserType::PREMIUM) {
-    // Set the specific validation strategy for premium users
     validationStrategy = new PremiumUserValidationStrategy();
     
     Logger::info(name + " joined PetSpace (Premium User - unlimited messaging, mild language allowed)");
@@ -251,7 +240,7 @@ PremiumUser::PremiumUser(std::string userName) : User(userName, UserType::PREMIU
 
 std::string PremiumUser::toString() const {
     std::stringstream ss;
-    ss << User::toString(); // Call base class toString
+    ss << User::toString();
     ss << "=== Premium User Specific ===" << std::endl;
     ss << "Status: Unlimited messaging enabled" << std::endl;
     ss << "Language Policy: Mild profanity allowed" << std::endl;
@@ -261,13 +250,11 @@ std::string PremiumUser::toString() const {
 }
 
 bool PremiumUser::send(std::string message, ChatRoom* room) {
-    // Check room membership
     if (!isInChatRoom(room)) {
         Logger::user(name + " tried to send a message but isn't in the room!");
         return false;
     }
-    
-    // Strategy pattern validation - premium users get more lenient rules
+
     if (!validateMessage(message)) {
         Logger::debug("[" + name + "] Message blocked by " + validationStrategy->getStrategyName() + " strategy");
         return false;
@@ -277,10 +264,11 @@ bool PremiumUser::send(std::string message, ChatRoom* room) {
     return true;
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // ================== AdminUser Class ==================
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 AdminUser::AdminUser(std::string userName) : User(userName, UserType::ADMIN) {
-    // Set the specific validation strategy for admin users
     validationStrategy = new AdminUserValidationStrategy();
     
     Logger::info(name + " joined PetSpace (Admin User - full privileges, " + 
@@ -290,7 +278,7 @@ AdminUser::AdminUser(std::string userName) : User(userName, UserType::ADMIN) {
 
 std::string AdminUser::toString() const {
     std::stringstream ss;
-    ss << User::toString(); // Call base class toString
+    ss << User::toString();
     ss << "=== Admin User Specific ===" << std::endl;
     ss << "Privileges: Full administrative access" << std::endl;
     ss << "Can access: Chat history, user management" << std::endl;
@@ -301,13 +289,11 @@ std::string AdminUser::toString() const {
 }
 
 bool AdminUser::send(std::string message, ChatRoom* room) {
-    // Even admins should be registered to send messages
     if (!isInChatRoom(room)) {
         Logger::user(name + " tried to send a message but isn't in the room!");
         return false;
     }
-    
-    // Strategy pattern validation - even admins get some validation (system threats)
+
     if (!validateMessage(message)) {
         Logger::debug("[" + name + "] Admin message blocked by " + validationStrategy->getStrategyName() + " strategy");
         return false;
@@ -319,14 +305,11 @@ bool AdminUser::send(std::string message, ChatRoom* room) {
 }
 
 void AdminUser::receive(std::string message, User* fromUser, ChatRoom* room) {
-    // Admin gets additional logging for monitoring (only in debug mode)
     Logger::debug("[ADMIN LOG] " + name + " received message for moderation review");
-    
-    // Call base class implementation
+
     User::receive(message, fromUser, room);
 }
 
-// Iterator pattern methods - Admin-only access
 Iterator* AdminUser::requestChatHistoryIterator(ChatRoom* room) {
     Logger::debug("[" + name + "] Admin requesting chat history iterator...");
     return room->createIterator(this);

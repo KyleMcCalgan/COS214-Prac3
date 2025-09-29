@@ -7,5 +7,4 @@
 
 #include "Logger.h"
 
-// Initialize static member - default to USER_ONLY for clean experience
 LogLevel Logger::currentLevel = DEBUG;

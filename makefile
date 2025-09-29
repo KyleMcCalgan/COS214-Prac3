@@ -14,7 +14,7 @@ SOURCES = $(wildcard $(SRCDIR)/*.cpp)
 ALL_OBJECTS = $(SOURCES:.cpp=.o)
 
 # Test objects (exclude demoMain.o)
-TEST_OBJECTS = $(filter-out $(SRCDIR)/demoMain.o, $(ALL_OBJECTS))
+TEST_OBJECTS = $(filter-out $(SRCDIR)/DemoMain.o, $(ALL_OBJECTS))
 
 # Demo objects (exclude TestingMain.o)
 DEMO_OBJECTS = $(filter-out $(SRCDIR)/TestingMain.o, $(ALL_OBJECTS))

@@ -23,14 +23,11 @@ void Dogorithm::registerUser(User* user) {
     
     // Add user to this mediator's user list
     users.push_back(user);
-    
-    // bidirectional relationship
+
     user->addChatRoom(this);
-    
-    // Clean user experience
+
     Logger::info(user->getName() + " joined Dogorithm");
-    
-    // Debug info
+
     Logger::debug("[Dogorithm] User " + user->getName() + " registered with mediator");
 }
 

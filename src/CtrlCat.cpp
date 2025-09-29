@@ -24,11 +24,9 @@ void CtrlCat::registerUser(User* user) {
     
     users.push_back(user);
     user->addChatRoom(this);
-    
-    // Clean user experience
+
     Logger::info(user->getName() + " joined CtrlCat");
-    
-    // Debug info
+
     Logger::debug("[CtrlCat] User " + user->getName() + " registered with mediator");
 }
 

@@ -30,11 +30,9 @@ void ChatRoom::sendMessage(std::string message, User* fromUser) {
         return;
     }
 
-    // FIXED: Display message cleanly once, then handle internal distribution
     Logger::user(fromUser->getName() + ": " + message);
     Logger::debug("[ChatRoom] Broadcasting message from " + fromUser->getName());
 
-    // Send to all users except sender - but don't duplicate the message display
     for (std::vector<User*>::iterator it = users.begin(); it != users.end(); ++it) {
         if (*it != fromUser) {
             (*it)->receive(message, fromUser, this);
@@ -43,7 +41,6 @@ void ChatRoom::sendMessage(std::string message, User* fromUser) {
 }
 
 void ChatRoom::saveMessage(std::string message, User* fromUser) {
-    // Validate that the fromUser is actually in this room
     bool userFound = false;
     for (std::vector<User*>::iterator it = users.begin(); it != users.end(); ++it) {
         if (*it == fromUser) {
@@ -57,7 +54,7 @@ void ChatRoom::saveMessage(std::string message, User* fromUser) {
         return;
     }
 
-    // Format: "UserName: message"
+    //Format: "UserName: message"
     std::string formattedMessage = fromUser->getName() + ": " + message;
     chatHistory.push_back(formattedMessage);
 
@@ -65,7 +62,7 @@ void ChatRoom::saveMessage(std::string message, User* fromUser) {
 }
 
 const std::vector<std::string>* ChatRoom::getChatHistory(User* requestingUser) const {
-    // Check if requesting user is admin
+
     if (requestingUser && requestingUser->getUserType() == UserType::ADMIN) {
         Logger::debug("[ChatRoom] Admin " + requestingUser->getName() + " granted access to chat history (" + std::to_string(chatHistory.size()) + " messages)");
         return &chatHistory;
@@ -79,7 +76,7 @@ const std::vector<std::string>* ChatRoom::getChatHistory(User* requestingUser) c
 }
 
 Iterator* ChatRoom::createIterator(User* requestingUser) {
-    // Check if requesting user is admin
+
     if (requestingUser && requestingUser->getUserType() == UserType::ADMIN) {
         Logger::debug("[ChatRoom] Creating iterator for admin " + requestingUser->getName());
         return new ConcreteIterator(&chatHistory);
