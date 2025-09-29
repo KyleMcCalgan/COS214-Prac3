@@ -1,5 +1,13 @@
-.vscode/
+# Doxygen generated documentation
+docs/
+html/
+latex/
+
+# Build artifacts
 *.o
-*.exe
+*.out
 test
 demo
+
+# OS files
+.DS_Store
