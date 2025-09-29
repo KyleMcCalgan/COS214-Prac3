@@ -81,6 +81,8 @@ std::string User::toString() const {
 void User::receive(std::string message, User* fromUser, ChatRoom* room) {
     // FIXED: Only show message once in clean format, no duplicate logging
     // The message display is handled by ChatRoom::sendMessage() now
+    (void)message;
+    (void)room;
     Logger::debug("[" + name + "] Received message from " + fromUser->getName() + " (" + fromUser->getUserTypeString() + ")");
 }
 

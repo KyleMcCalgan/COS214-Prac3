@@ -665,13 +665,13 @@ int main() {
     // Set default logging level
     Logger::setLevel(DEBUG);  // Clean experience by default
 
-    // testMediatorPattern();
-    // testCommandPattern();
-    //  testUserHierarchy();
-    // testPolymorphism();
-    // testIntegration();
-    // testIterator();
-    //testLoggerLevels();  
+    testMediatorPattern();
+    testCommandPattern();
+     testUserHierarchy();
+    testPolymorphism();
+    testIntegration();
+    testIterator();
+    testLoggerLevels();  
     testUserTypeValidationStrategies();
 
     //KyleTest();

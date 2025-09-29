@@ -107,13 +107,16 @@ public:
      * @param room Chat room to get iterator for
      * @return Iterator pointer or nullptr if access denied
      */
-    virtual Iterator* requestChatHistoryIterator(ChatRoom* room) { return nullptr; }
+    virtual Iterator* requestChatHistoryIterator(ChatRoom* room) { 
+    (void)room;  // Suppress unused parameter warning
+    return nullptr; 
+}
     
     /**
      * @brief Iterate through chat history (only admins can do this)
      * @param room Chat room to iterate through
      */
-    virtual void iterateChatHistory(ChatRoom* room) {}
+    virtual void iterateChatHistory(ChatRoom* room) { (void)room;}
 
 protected:
     /**
